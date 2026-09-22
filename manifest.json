@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "SIAPS Tool",
+  "version": "0.1.0",
+  "description": "Geração de relatórios SIAPS para a DAPS Betim/MG.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://*.saude.gov.br/*"],
+  "action": {
+    "default_title": "SIAPS Tool",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.saude.gov.br/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SIAPS Tool</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+  <main class="popup">
+    <header>
+      <p class="eyebrow">DAPS • BETIM/MG</p>
+      <h1>SIAPS <span>TOOL</span></h1>
+      <p class="subtitle">Relatórios da Visão por Competência</p>
+    </header>
+
+    <section class="card">
+      <h2>Configuração do relatório</h2>
+
+      <label for="competencia">Competência</label>
+      <select id="competencia" disabled></select>
+
+      <label>Indicadores</label>
+      <details class="multiselect" id="indicadoresDetalhe">
+        <summary id="indicadoresResumo">Todos os indicadores</summary>
+        <div class="options" id="indicadores"></div>
+      </details>
+
+      <label for="unidades">Unidades</label>
+      <select id="unidades" multiple disabled>
+        <option value="" selected>Todas as unidades</option>
+      </select>
+
+      <label for="equipes">Equipes</label>
+      <select id="equipes" multiple disabled>
+        <option value="" selected>Todas as equipes</option>
+      </select>
+      <p class="hint">Unidades e equipes são disponibilizadas após a primeira coleta realizada pelo SIAPS.</p>
+    </section>
+
+    <section class="card compact">
+      <h2>Opções</h2>
+      <label class="check" for="metadados">
+        <input id="metadados" type="checkbox" checked>
+        <span>Incluir metadados</span>
+      </label>
+    </section>
+
+    <section class="card compact">
+      <h2>Ordenação</h2>
+      <div class="two-columns">
+        <select aria-label="Campo de ordenação" disabled>
+          <option>Pontuação</option>
+        </select>
+        <select aria-label="Direção da ordenação" disabled>
+          <option>Maior → Menor</option>
+        </select>
+      </div>
+    </section>
+
+    <button id="gerar" type="button" disabled>Gerar relatório</button>
+
+    <section class="status" aria-live="polite">
+      <span class="status-dot"></span>
+      <div>
+        <strong>Status</strong>
+        <p id="statusMensagem">Conecte-se a uma página autenticada do SIAPS.</p>
+      </div>
+    </section>
+  </main>
+  <script src="popup.js"></script>
+</body>
+
+</html>
