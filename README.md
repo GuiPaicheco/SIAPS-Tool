@@ -1,39 +1,47 @@
-# SIAPS Tool
+# SIAPS-TOOL 1.0.0
 
-Extensão Chrome para gerar relatórios da Visão por Competência do SIAPS para a DAPS Betim/MG.
+Extensão Chrome interna da DAPS Betim/MG para consolidar dados da Visão por Competência do SIAPS e exportar relatórios XLSX.
 
-## Instalação para desenvolvimento
+## Instalação interna
 
-1. Abra `chrome://extensions` no Chrome.
-2. Ative o **Modo do desenvolvedor**.
-3. Selecione **Carregar sem compactação** e escolha esta pasta.
-4. Abra a tela **Visão por Competência** em uma sessão autenticada do SIAPS.
-5. Abra o popup da extensão e gere o relatório.
+1. Extraia o pacote `SIAPS-TOOL-1.0.0.zip` em uma pasta local.
+2. Abra `chrome://extensions` no Google Chrome.
+3. Ative o **Modo do desenvolvedor**.
+4. Clique em **Carregar sem compactação** e selecione a pasta extraída (a pasta que contém `manifest.json`).
+5. Abra `https://siaps.saude.gov.br/`, entre no SIAPS e acesse a Visão por Competência.
+6. Abra o popup da extensão pelo ícone do Chrome.
 
-O motor continua em `main.js` e é executado no contexto principal da página SIAPS. Isso preserva o acesso ao `access_token` da sessão e ao ExcelJS já carregado pelo sistema.
+Não há tela de login própria: a extensão usa exclusivamente a sessão autenticada já existente no SIAPS, inclusive o `access_token` da página.
 
-## Primeira interface
+## Como usar
 
-- Uma competência por execução (a competência configurada no motor).
-- Todos ou indicadores específicos, a partir da mesma lista de 31 indicadores do motor.
-- Inclusão opcional de metadados institucionais.
-- Unidades e equipes reutilizadas da coleta já realizada pelo motor e disponíveis para filtrar execuções posteriores.
-- Ordenação fixa por pontuação, do maior para o menor.
+1. Adicione uma ou mais competências (mês/ano).
+2. Selecione todos os indicadores, indicadores individuais ou um grupo de equipe (eSF/eAP, eSB, eMulti, eAPP, entre outros).
+3. Clique em **Gerar consolidações**. Essa etapa consulta o SIAPS e mantém os resultados em memória na própria aba do SIAPS; ela não baixa arquivos.
+4. Após a conclusão, filtre unidades e equipes, defina o modo de dados, metadados e ordenação.
+5. Clique em **Baixar planilha**. A exportação reutiliza a consolidação existente, sem nova consulta à API.
 
+O modelo desta versão é um XLSX por indicador e por competência. Quando os filtros resultarem em mais de um arquivo, o popup mostra uma confirmação com a quantidade de arquivos e registros antes de iniciar os downloads.
 
----
+## Modos de dados
 
-# Pendências:
+- **Planilha completa:** inclui as variáveis do indicador, além das colunas fixas.
+- **Apenas dados analíticos:** mantém as colunas fixas, pontuação e classificação.
 
-## Urgente:
-- Ampliar amplitude das comptências;
-- Melhorar a documentação dos arquivos (nomear como por exemplo, C1-eSB-06-2026 ou C3-eAPP-07-2026)
+Os metadados institucionais podem ser incluídos ou removidos sem alterar a consolidação. A ordenação utiliza `score` numérico; campos disponíveis apenas em parte dos indicadores não são oferecidos como opções para um conjunto misto.
 
-## Futuras:
-1. Instalação facilitada;
-2. Status em forma de "barra de conclusão";
-3. Tentar melhorar o desempenho;
-4. Melhorar a UI/UX;
+## Limitações importantes
 
-## A Pensar:
-- Banco de Dados em Mock para auxiliar no desempenho e manter segurança?
+- Mantenha a **mesma aba SIAPS aberta e sem recarregar** entre a consolidação e o download. A consolidação é invalidada se a aba for recarregada, fechada ou trocada.
+- Fechar o popup não interrompe uma execução. Ao reabri-lo, o status e os logs recentes são recuperados enquanto a aba SIAPS permanecer válida.
+- Muitas competências e indicadores podem consumir memória da aba. A versão não impõe limite, mas recomenda consolidar conjuntos grandes em lotes menores quando necessário.
+- A disponibilidade de dados depende do SIAPS para cada competência e indicador selecionado.
+
+## Estrutura
+
+- `popup.html`, `popup.css`, `popup.js`: interface, estado e validações do popup.
+- `background.js`: coordenação, persistência de estado e ponte com a aba SIAPS.
+- `content.js`: ponte de mensagens entre extensão e página.
+- `main.js`: motor de coleta, consolidação, filtros e geração XLSX.
+
+O motor continua executando no contexto principal da página SIAPS para preservar o ExcelJS e o FileSaver já disponibilizados pelo sistema. Endpoints, autenticação, paginação, retries e fallbacks dos indicadores 118/128 permanecem no motor existente.

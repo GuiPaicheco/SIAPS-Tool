@@ -3,11 +3,14 @@ const STORAGE_CONFIG = "siapsToolPopupConfig";
 
 const state = {
   tabId: null,
+  tabUrl: null,
   catalogo: null,
   opcoes: { unidades: [], equipes: [] },
   emExecucao: false,
   consolidacao: null,
   competencias: [],
+  previaExportacao: null,
+  exportacaoPendente: null,
   controllers: {}
 };
 
@@ -24,6 +27,10 @@ const ui = {
   direcaoOrdenacao: document.querySelector("#ordenarDirecao"),
   consolidar: document.querySelector("#consolidar"),
   baixar: document.querySelector("#baixar"),
+  downloadConfirmation: document.querySelector("#downloadConfirmation"),
+  downloadConfirmationText: document.querySelector("#downloadConfirmationText"),
+  confirmarDownloads: document.querySelector("#confirmarDownloads"),
+  cancelarDownloads: document.querySelector("#cancelarDownloads"),
   resumo: document.querySelector("#consolidationSummary"),
   selectionCount: document.querySelector("#selectionCount"),
   statusCard: document.querySelector("#statusCard"),
@@ -288,6 +295,11 @@ function aplicarEstadoExecucao(execucao) {
   definirStatus(execucao.status, execucao.nivel || "info");
   renderLog(execucao.mensagens || []);
   (execucao.mensagens || []).forEach(item => atualizarProgresso(item.mensagem));
+  if (execucao.competenciaAtual && execucao.competenciasTotal) {
+    ui.progressWrap.hidden = false;
+    const textoAtual = ui.progressText.textContent.replace(/^Competência \d+ de \d+( • )?/, "");
+    ui.progressText.textContent = `Competência ${execucao.competenciaAtual} de ${execucao.competenciasTotal}${textoAtual ? ` • ${textoAtual}` : ""}`;
+  }
   atualizarResumoConsolidacao();
 }
 
@@ -317,11 +329,22 @@ function atualizarFaseExportacao() {
 
 function atualizarContagemExportacao() {
   if (!state.consolidacao) return;
-  const total = state.consolidacao.registros;
-  const equipes = state.controllers.equipes?.getValues() || [];
-  const equipesVisiveis = state.controllers.equipes?.visiveis || [];
-  const selecionadas = equipes.length ? equipes.filter(valor => equipesVisiveis.some(equipe => equipe.valor === valor)).length : null;
-  ui.selectionCount.textContent = selecionadas === 0 ? `0 de ${total} registros serão exportados.` : `${total} registros consolidados • filtros atuais serão aplicados sem nova consulta.`;
+  ocultarConfirmacaoDownloads();
+  const total = state.consolidacao.registros || 0;
+  ui.selectionCount.textContent = "Calculando resultado dos filtros...";
+  const referencia = state.consolidacao;
+  chrome.runtime.sendMessage({
+    type: "previewExport",
+    tabId: state.tabId,
+    configuracao: configuracaoMotor()
+  }, resposta => {
+    if (referencia !== state.consolidacao || chrome.runtime.lastError || resposta?.erro) {
+      ui.selectionCount.textContent = `${total} registros consolidados.`;
+      return;
+    }
+    state.previaExportacao = resposta;
+    ui.selectionCount.textContent = `${resposta.registros} de ${total} registros serão exportados em ${resposta.arquivos} arquivo(s), sem nova consulta.`;
+  });
   atualizarFaseExportacao();
 }
 
@@ -449,6 +472,7 @@ async function iniciar() {
   aplicarEstadoExecucao(execucao || { mensagens: [], status: "Pronto para gerar." });
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   state.tabId = tab?.id;
+  state.tabUrl = tab?.url || null;
   if (!state.tabId || !/^https:\/\/.*\.saude\.gov\.br\//.test(tab.url || "")) {
     definirStatus("Abra a Visão por Competência em uma sessão autenticada do SIAPS.", "error");
     return;
@@ -464,8 +488,23 @@ async function iniciar() {
     configurarControles(configuracaoSalva);
     preencherOpcoes(opcoesDados.siapsToolOptions, configuracaoSalva);
     atualizarCamposOrdenacao();
-    if (state.consolidacao && !consolidacaoCompativel()) invalidarConsolidacao();
-    aplicarEstadoExecucao({ ...(execucao || { mensagens: [], status: "Pronto para gerar." }), consolidacao: state.consolidacao });
+    const pertenceAbaAtual = !state.consolidacao?.tabId || (
+      state.consolidacao.tabId === state.tabId &&
+      (!state.consolidacao.pageUrl || state.consolidacao.pageUrl === state.tabUrl)
+    );
+    if (state.consolidacao && (!pertenceAbaAtual || !consolidacaoCompativel())) {
+      invalidarConsolidacao();
+    }
+    if (!state.consolidacao) {
+      aplicarEstadoExecucao({ ...(execucao || { mensagens: [], status: "Pronto para gerar." }), consolidacao: null });
+      return;
+    }
+    chrome.runtime.sendMessage({ type: "getPageConsolidation", tabId: state.tabId }, pagina => {
+      if (chrome.runtime.lastError || pagina?.erro || !pagina?.disponivel) {
+        invalidarConsolidacao();
+      }
+      aplicarEstadoExecucao({ ...(execucao || { mensagens: [], status: "Pronto para gerar." }), consolidacao: state.consolidacao });
+    });
   });
 }
 
@@ -473,7 +512,7 @@ ui.consolidar.addEventListener("click", () => {
   if (state.emExecucao || !validar()) return;
   salvarConfiguracao();
   const configuracao = { ...configuracaoMotor(), modo: "consolidar", unidades: [], equipes: [] };
-  chrome.runtime.sendMessage({ type: "start", tabId: state.tabId, configuracao }, resposta => {
+  chrome.runtime.sendMessage({ type: "start", tabId: state.tabId, pageUrl: state.tabUrl, configuracao }, resposta => {
     if (chrome.runtime.lastError || resposta?.erro) {
       definirStatus(mensagemAmigavel(resposta?.erro || chrome.runtime.lastError?.message), "error");
       chrome.runtime.sendMessage({ type: "getExecution" }, aplicarEstadoExecucao);
@@ -482,18 +521,52 @@ ui.consolidar.addEventListener("click", () => {
   });
 });
 
-ui.form.addEventListener("submit", event => {
-  event.preventDefault();
-  if (state.emExecucao || !state.consolidacao || !validar()) return;
-  salvarConfiguracao();
-  chrome.runtime.sendMessage({ type: "exportConsolidation", tabId: state.tabId, configuracao: configuracaoMotor() }, resposta => {
+function ocultarConfirmacaoDownloads() {
+  state.exportacaoPendente = null;
+  ui.downloadConfirmation.hidden = true;
+}
+
+function iniciarExportacao(configuracao) {
+  ocultarConfirmacaoDownloads();
+  chrome.runtime.sendMessage({ type: "exportConsolidation", tabId: state.tabId, configuracao }, resposta => {
     if (chrome.runtime.lastError || resposta?.erro) {
       definirStatus(mensagemAmigavel(resposta?.erro || chrome.runtime.lastError?.message), "error");
       chrome.runtime.sendMessage({ type: "getExecution" }, aplicarEstadoExecucao);
     }
     else aplicarEstadoExecucao({ emExecucao: true, consolidacao: state.consolidacao, mensagens: [], status: "Gerando planilha sem nova consulta...", nivel: "info" });
   });
+}
+
+ui.form.addEventListener("submit", event => {
+  event.preventDefault();
+  if (state.emExecucao || !state.consolidacao || !validar()) return;
+  salvarConfiguracao();
+  const configuracao = configuracaoMotor();
+  chrome.runtime.sendMessage({ type: "previewExport", tabId: state.tabId, configuracao }, resposta => {
+    if (chrome.runtime.lastError || resposta?.erro) {
+      definirStatus(mensagemAmigavel(resposta?.erro || chrome.runtime.lastError?.message), "error");
+      return;
+    }
+    state.previaExportacao = resposta;
+    if (!resposta.arquivos) {
+      definirStatus("Nenhum registro corresponde aos filtros selecionados.", "warning");
+      return;
+    }
+    if (resposta.arquivos > 1) {
+      state.exportacaoPendente = configuracao;
+      ui.downloadConfirmationText.textContent = `Os filtros atuais gerarão ${resposta.arquivos} arquivos XLSX com ${resposta.registros} registros. Confirme para iniciar os downloads.`;
+      ui.downloadConfirmation.hidden = false;
+      ui.confirmarDownloads.focus();
+      return;
+    }
+    iniciarExportacao(configuracao);
+  });
 });
+
+ui.confirmarDownloads.addEventListener("click", () => {
+  if (state.exportacaoPendente) iniciarExportacao(state.exportacaoPendente);
+});
+ui.cancelarDownloads.addEventListener("click", ocultarConfirmacaoDownloads);
 
 ui.metadados.addEventListener("change", salvarConfiguracao);
 ui.modoDados.addEventListener("change", () => { atualizarCamposOrdenacao(); salvarConfiguracao(); });

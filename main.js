@@ -1044,7 +1044,7 @@
   }
 
   log(
-    "✅ Diagnóstico concluído: 31/31 indicadores."
+    `✅ Diagnóstico concluído: ${indicadoresSelecionados.length}/${indicadoresSelecionados.length} indicadores.`
   );
 
 
@@ -2660,6 +2660,25 @@
   }
 
 
+  window.__SIAPS_TOOL_PREVER_EXPORTACAO__ =
+    opcoes => {
+      const consolidacao = window.__SIAPS_TOOL_CONSOLIDACAO__;
+      if (!consolidacao) {
+        throw new Error("A consolidação não está disponível nesta aba. Gere uma nova consolidação.");
+      }
+      const relatorios = consolidacao.competencias
+        ? consolidacao.competencias.flatMap(competencia => competencia.relatorios)
+        : consolidacao.relatorios || [];
+      const relatoriosFiltrados = relatorios.map(relatorio => ({
+        relatorio,
+        equipes: filtrarEquipes(relatorio.equipes, opcoes)
+      })).filter(item => item.equipes.length);
+      return {
+        arquivos: relatoriosFiltrados.length,
+        registros: relatoriosFiltrados.reduce((total, item) => total + item.equipes.length, 0)
+      };
+    };
+
   window.__SIAPS_TOOL_EXPORTAR_CONSOLIDACAO__ =
     async opcoes => {
 
@@ -2778,8 +2797,11 @@
  const relatoriosConsolidados =
    [];
 
- const camposOrdenacao =
-   new Set();
+  const camposOrdenacao =
+    new Set();
+
+  let camposOrdenacaoComuns =
+    null;
 
   const camposOrdenacaoAnaliticos =
     construirColunas(
@@ -2908,6 +2930,15 @@
         coluna =>
           camposOrdenacao.add(coluna)
       );
+
+      const camposDesteIndicador =
+        new Set(colunasOrdenacao);
+      camposOrdenacaoComuns =
+        camposOrdenacaoComuns === null
+          ? [...colunasOrdenacao]
+          : camposOrdenacaoComuns.filter(
+              coluna => camposDesteIndicador.has(coluna)
+            );
 
       campoPadraoOrdenacao =
         colunasOrdenacao[
@@ -3137,7 +3168,7 @@
         competencias: competenciasConsolidadas.map(item => item.competencia),
         indicadores: todosRelatorios.length,
        indicadoresCodigos: indicadoresSelecionados.map(indicador => indicador.codigo),
-       camposOrdenacao: [...camposOrdenacao],
+        camposOrdenacao: camposOrdenacaoComuns || [...camposOrdenacao],
         camposOrdenacaoAnaliticos,
        campoPadraoOrdenacao,
         unidades: window.__SIAPS_TOOL_OPCOES__?.unidades.length || 0,
@@ -3184,7 +3215,7 @@
   console.log("");
 
   console.log(
-    "%c📋 RESULTADO DOS 31 INDICADORES",
+    `%c📋 RESULTADO DOS ${indicadoresSelecionados.length} INDICADORES`,
     "font-size:16px;font-weight:bold;"
   );
 
@@ -3195,12 +3226,12 @@
   console.log("");
 
   console.log(
-    `%c✅ SUCESSO: ${sucesso.length}/31`,
+    `%c✅ SUCESSO: ${sucesso.length}/${indicadoresSelecionados.length}`,
     "font-size:16px;font-weight:bold;color:green;"
   );
 
   console.log(
-    `%c❌ ERROS: ${falhas.length}/31`,
+    `%c❌ ERROS: ${falhas.length}/${indicadoresSelecionados.length}`,
     "font-size:16px;font-weight:bold;color:red;"
   );
 
@@ -3286,11 +3317,11 @@
   );
 
   console.log(
-    `📊 Indicadores concluídos: ${sucesso.length}/31`
+    `📊 Indicadores concluídos: ${sucesso.length}/${indicadoresSelecionados.length}`
   );
 
   console.log(
-    `📊 Indicadores com erro: ${falhas.length}/31`
+    `📊 Indicadores com erro: ${falhas.length}/${indicadoresSelecionados.length}`
   );
 
   console.log(

@@ -656,4 +656,10 @@ footer span {
 .consolidation-summary { margin:0 0 12px; padding:13px; border:1px solid #bfe2c8; border-radius:9px; background:#f1fbf4; color:#24613a; font-size:12px; line-height:1.55; }
 .consolidation-summary strong { display:block; margin-bottom:5px; font-size:13px; }
 .selection-count { margin:0 0 8px; color:var(--muted); font-size:12px; text-align:center; }
+.download-confirmation { margin: 10px 0; padding: 13px; border: 1px solid #e5c46b; border-radius: 9px; background: #fff9e8; color: #6c5100; font-size: 12px; }
+.download-confirmation p { margin: 5px 0 11px; line-height: 1.45; }
+.confirmation-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.confirmation-actions button { min-height: 34px; border-radius: 6px; padding: 0 11px; font: inherit; font-weight: 700; cursor: pointer; }
+.secondary-button { border: 1px solid #b9c9d7; background: #fff; color: var(--ink); }
+.primary-button { border: 1px solid var(--blue); background: var(--blue); color: #fff; }
 @media (max-width: 460px) { .competencia-fields { grid-template-columns: 1fr 92px; } }

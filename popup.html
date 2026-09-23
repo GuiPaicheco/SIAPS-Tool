@@ -99,6 +99,14 @@
         </div>
 
         <p class="selection-count" id="selectionCount">Gere uma consolidação para habilitar a exportação.</p>
+        <section id="downloadConfirmation" class="download-confirmation" hidden aria-live="polite">
+          <strong>Confirmar downloads</strong>
+          <p id="downloadConfirmationText"></p>
+          <div class="confirmation-actions">
+            <button id="cancelarDownloads" type="button" class="secondary-button">Cancelar</button>
+            <button id="confirmarDownloads" type="button" class="primary-button">Confirmar downloads</button>
+          </div>
+        </section>
         <button class="generate-button" id="baixar" type="submit" disabled>
           <span class="button-icon" aria-hidden="true">↓</span>
           <span class="button-label">Baixar planilha</span>
@@ -116,7 +124,7 @@
         <div id="executionLog" class="execution-log" role="log" aria-live="polite"></div>
       </section>
 
-      <footer>SIAPS-TOOL <span>•</span> DAPS • Betim/MG <span>•</span> v0.1.0</footer>
+      <footer>SIAPS-TOOL <span>•</span> DAPS • Betim/MG <span>•</span> v1.0.0</footer>
     </main>
     <script src="popup.js"></script>
   </body>

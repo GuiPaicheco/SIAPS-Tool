@@ -62,6 +62,18 @@ async function executarNoSiaps(tabId, configuracao) {
   });
 }
 
+async function consolidacaoDisponivelNaAba(tabId) {
+  const resultado = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: () => Boolean(
+      window.__SIAPS_TOOL_CONSOLIDACAO__ &&
+      window.__SIAPS_TOOL_EXPORTAR_CONSOLIDACAO__
+    )
+  });
+  return Boolean(resultado[0]?.result);
+}
+
 chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
   if (mensagem.type === "getExecution") {
     obterExecucao().then(responder);
@@ -85,9 +97,17 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
     return true;
   }
 
+  if (mensagem.type === "getPageConsolidation") {
+    consolidacaoDisponivelNaAba(mensagem.tabId)
+      .then(disponivel => responder({ disponivel }))
+      .catch(erro => responder({ erro: erro.message }));
+    return true;
+  }
+
   if (mensagem.type === "start") {
     salvarExecucao({
       emExecucao: true,
+      consolidacao: null,
       mensagens: [...(mensagem.mensagensIniciais || []), {
         mensagem: "SIAPS-TOOL inicializado.",
         nivel: "info",
@@ -110,10 +130,15 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
         await chrome.storage.session.set({
           [CHAVE_MULTI_CONSOLIDACAO]: {
             tabId: mensagem.tabId,
+            pageUrl: mensagem.pageUrl || null,
             configuracao,
             restantes,
             total: competencias.length
           }
+        });
+        await salvarExecucao({
+          competenciaAtual: 1,
+          competenciasTotal: competencias.length
         });
         await chrome.scripting.executeScript({
           target: { tabId: mensagem.tabId },
@@ -162,6 +187,23 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
     return true;
   }
 
+  if (mensagem.type === "previewExport") {
+    chrome.scripting.executeScript({
+      target: { tabId: mensagem.tabId },
+      world: "MAIN",
+      func: opcoes => {
+        if (!window.__SIAPS_TOOL_PREVER_EXPORTACAO__) {
+          throw new Error("A consolidação não está disponível nesta aba. Gere uma nova consolidação.");
+        }
+        return window.__SIAPS_TOOL_PREVER_EXPORTACAO__(opcoes);
+      },
+      args: [mensagem.configuracao]
+    })
+      .then(resultado => responder(resultado[0]?.result || { arquivos: 0, registros: 0 }))
+      .catch(erro => responder({ erro: erro.message }));
+    return true;
+  }
+
   if (mensagem.source === "SIAPS_TOOL" && sender.tab) {
     filaEventos =
       filaEventos
@@ -193,6 +235,7 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
                 multi?.tabId === sender.tab.id &&
                 multi.restantes.length
               ) {
+                try {
                 const [proxima, ...restantes] =
                   multi.restantes;
                 const configuracao = {
@@ -208,6 +251,8 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
                 });
                 await salvarExecucao({
                   emExecucao: true,
+                  competenciaAtual: multi.total - restantes.length,
+                  competenciasTotal: multi.total,
                   status: `Consolidando competência ${multi.total - restantes.length} de ${multi.total}...`,
                   nivel: "info"
                 });
@@ -221,6 +266,21 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
                   mensagem: `Consolidando competência ${multi.total - restantes.length} de ${multi.total}...`,
                   nivel: "info"
                 });
+                } catch (erro) {
+                  await chrome.storage.session.remove(CHAVE_MULTI_CONSOLIDACAO);
+                  await salvarExecucao({
+                    emExecucao: false,
+                    consolidacao: null,
+                    status: "Não foi possível iniciar a próxima competência. Gere uma nova consolidação.",
+                    nivel: "error"
+                  });
+                  chrome.runtime.sendMessage({
+                    source: "SIAPS_TOOL",
+                    type: "progress",
+                    mensagem: "Não foi possível continuar a consolidação. Gere uma nova consolidação.",
+                    nivel: "error"
+                  });
+                }
                 return;
               }
 
@@ -232,8 +292,11 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
 
               await salvarExecucao({
                 emExecucao: false,
-                consolidacao:
-                  mensagem.resumo,
+                consolidacao: {
+                  ...mensagem.resumo,
+                  tabId: sender.tab.id,
+                  pageUrl: sender.tab.url
+                },
                 status:
                   "Consolidação concluída.",
                 nivel:
@@ -256,4 +319,43 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
           }
         );
   }
+});
+
+async function invalidarEstadoDaAba(tabId) {
+  const execucao = await obterExecucao();
+  const dadosMulti = await chrome.storage.session.get(CHAVE_MULTI_CONSOLIDACAO);
+  const multi = dadosMulti[CHAVE_MULTI_CONSOLIDACAO];
+
+  if (multi?.tabId === tabId) {
+    await chrome.storage.session.remove(CHAVE_MULTI_CONSOLIDACAO);
+  }
+
+  if (execucao.consolidacao?.tabId === tabId || multi?.tabId === tabId) {
+    await salvarExecucao({
+      emExecucao: false,
+      consolidacao: null,
+      status: "A aba do SIAPS foi recarregada ou fechada. Gere uma nova consolidação.",
+      nivel: "warning"
+    });
+    chrome.runtime.sendMessage({
+      source: "SIAPS_TOOL",
+      type: "progress",
+      mensagem: "A consolidação foi invalidada porque a aba do SIAPS mudou.",
+      nivel: "warning"
+    });
+  }
+}
+
+chrome.tabs.onUpdated.addListener((tabId, alteracao) => {
+  if (alteracao.status === "loading" || alteracao.url) {
+    invalidarEstadoDaAba(tabId).catch(erro =>
+      console.error("SIAPS-TOOL: falha ao invalidar a aba.", erro)
+    );
+  }
+});
+
+chrome.tabs.onRemoved.addListener(tabId => {
+  invalidarEstadoDaAba(tabId).catch(erro =>
+    console.error("SIAPS-TOOL: falha ao limpar a aba fechada.", erro)
+  );
 });
