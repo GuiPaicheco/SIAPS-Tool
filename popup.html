@@ -1,76 +1,121 @@
 <!doctype html>
+<!-- Desenvolvido por: Guilherme Paicheco Ferreira (guilherme.paicheco@betim.mg.gov.br)-->
 <html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SIAPS-TOOL</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="brand-header">
+        <div class="brand-left">
+          <img class="logo logo-betim" src="assets/logo-betim.png" alt="Prefeitura de Betim">
+          <div>
+            <h1>SIAPS-<span>TOOL</span></h1>
+            <p>DAPS • BETIM/MG</p>
+          </div>
+        </div>
+        <div class="brand-right">
+          <p>Ferramenta de Apoio<br>para a Atenção Primária à Saúde</p>
+          <img class="logo logo-sus" src="assets/logo-sus.png" alt="SUS">
+        </div>
+      </header>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SIAPS Tool</title>
-  <link rel="stylesheet" href="popup.css">
-</head>
+      <form id="reportForm" novalidate>
+        <section class="selection-card">
+          <div class="section-heading">
+            <span class="step">1</span>
+            <div><h2>Competência</h2><p>Selecione a competência do relatório</p></div>
+          </div>
+          <div class="competencia-fields">
+            <label class="sr-only" for="competenciaMes">Mês</label>
+            <select id="competenciaMes" aria-label="Mês da competência"><option value="01">JANEIRO</option><option value="02">FEVEREIRO</option><option value="03">MARÇO</option><option value="04">ABRIL</option><option value="05">MAIO</option><option value="06">JUNHO</option><option value="07">JULHO</option><option value="08">AGOSTO</option><option value="09">SETEMBRO</option><option value="10">OUTUBRO</option><option value="11">NOVEMBRO</option><option value="12">DEZEMBRO</option></select>
+            <label class="sr-only" for="competenciaAno">Ano</label>
+            <input id="competenciaAno" type="number" min="2000" max="2100" inputmode="numeric" aria-label="Ano da competência">
+          </div>
+          <small id="competenciaHelp" class="field-help"></small>
+          <p class="field-error" id="competenciaError"></p>
+        </section>
 
-<body>
-  <main class="popup">
-    <header>
-      <p class="eyebrow">DAPS • BETIM/MG</p>
-      <h1>SIAPS <span>TOOL</span></h1>
-      <p class="subtitle">Relatórios da Visão por Competência</p>
-    </header>
+        <section class="selection-card">
+          <div class="section-heading">
+            <span class="step">2</span>
+            <div><h2>Indicadores</h2><p>Selecione os indicadores a processar</p></div>
+          </div>
+          <div id="indicatorSelect"></div>
+          <p class="field-error" id="indicadoresError"></p>
+        </section>
 
-    <section class="card">
-      <h2>Configuração do relatório</h2>
+        <button class="generate-button consolidation-button" id="consolidar" type="button" disabled><span class="button-icon" aria-hidden="true">▶</span><span class="button-label">Gerar consolidação</span></button>
+        <section id="consolidationSummary" class="consolidation-summary" hidden></section>
+        <div class="phase-heading"><span>Fase 2</span><strong>Filtrar e exportar</strong></div>
 
-      <label for="competencia">Competência</label>
-      <select id="competencia" disabled></select>
+        <section class="selection-card">
+          <div class="section-heading">
+            <span class="step">3</span>
+            <div><h2>Unidades</h2><p>Selecione as unidades, quando disponíveis</p></div>
+          </div>
+          <div id="unitSelect"></div>
+          <p class="field-help" id="unidadesHelp">Disponível após carregar dados do SIAPS.</p>
+          <p class="field-error" id="unidadesError"></p>
+        </section>
 
-      <label>Indicadores</label>
-      <details class="multiselect" id="indicadoresDetalhe">
-        <summary id="indicadoresResumo">Todos os indicadores</summary>
-        <div class="options" id="indicadores"></div>
-      </details>
+        <section class="selection-card">
+          <div class="section-heading">
+            <span class="step">4</span>
+            <div><h2>Equipes</h2><p>Selecione as equipes, quando disponíveis</p></div>
+          </div>
+          <div id="teamSelect"></div>
+          <p class="field-help" id="equipesHelp">Disponível após carregar dados do SIAPS.</p>
+          <p class="field-warning" id="equipesWarning"></p>
+          <p class="field-error" id="equipesError"></p>
+        </section>
 
-      <label for="unidades">Unidades</label>
-      <select id="unidades" multiple disabled>
-        <option value="" selected>Todas as unidades</option>
-      </select>
+        <div class="two-cards">
+         <section class="option-card">
+           <div class="mini-heading"><span class="icon" aria-hidden="true">⚙</span><h2>Opções</h2></div>
+            <label for="modoDados">Conteúdo da planilha</label>
+            <select id="modoDados">
+              <option value="completo">Planilha completa</option>
+              <option value="analitico">Apenas dados analíticos</option>
+            </select>
+            <small class="option-help">Dados analíticos incluem as colunas fixas, pontuação e classificação.</small>
+           <label class="toggle-row" for="metadados">
+              <input id="metadados" type="checkbox" checked>
+              <span><strong>Incluir metadados institucionais</strong><small>Inclui cabeçalho, município, filtros e fonte.</small></span>
+            </label>
+          </section>
+          <section class="option-card">
+            <div class="mini-heading"><span class="icon" aria-hidden="true">↕</span><h2>Ordenação</h2></div>
+            <label for="ordenarCampo">Ordenar por</label>
+            <select id="ordenarCampo" disabled><option value="score">Pontuação</option></select>
+            <label for="ordenarDirecao">Ordem</label>
+            <select id="ordenarDirecao"><option value="desc">Maior → Menor</option><option value="asc">Menor → Maior</option></select>
+          </section>
+        </div>
 
-      <label for="equipes">Equipes</label>
-      <select id="equipes" multiple disabled>
-        <option value="" selected>Todas as equipes</option>
-      </select>
-      <p class="hint">Unidades e equipes são disponibilizadas após a primeira coleta realizada pelo SIAPS.</p>
-    </section>
+        <p class="selection-count" id="selectionCount">Gere uma consolidação para habilitar a exportação.</p>
+        <button class="generate-button" id="baixar" type="submit" disabled>
+          <span class="button-icon" aria-hidden="true">↓</span>
+          <span class="button-label">Baixar planilha</span>
+        </button>
+      </form>
 
-    <section class="card compact">
-      <h2>Opções</h2>
-      <label class="check" for="metadados">
-        <input id="metadados" type="checkbox" checked>
-        <span>Incluir metadados</span>
-      </label>
-    </section>
+      <section class="status-card" id="statusCard" aria-live="polite">
+        <div class="status-line"><span class="status-dot"></span><strong id="statusTitle">Pronto para gerar</strong></div>
+        <p id="statusMessage">Configure as opções acima e clique em “Gerar relatório”.</p>
+        <div class="progress-wrap" id="progressWrap" hidden><div class="progress-track"><span id="progressBar"></span></div><small id="progressText"></small></div>
+      </section>
 
-    <section class="card compact">
-      <h2>Ordenação</h2>
-      <div class="two-columns">
-        <select aria-label="Campo de ordenação" disabled>
-          <option>Pontuação</option>
-        </select>
-        <select aria-label="Direção da ordenação" disabled>
-          <option>Maior → Menor</option>
-        </select>
-      </div>
-    </section>
+      <section class="log-card">
+        <div class="log-heading"><h2>Log de execução</h2><button type="button" id="limparLog" class="text-button">Limpar</button></div>
+        <div id="executionLog" class="execution-log" role="log" aria-live="polite"></div>
+      </section>
 
-    <button id="gerar" type="button" disabled>Gerar relatório</button>
-
-    <section class="status" aria-live="polite">
-      <span class="status-dot"></span>
-      <div>
-        <strong>Status</strong>
-        <p id="statusMensagem">Conecte-se a uma página autenticada do SIAPS.</p>
-      </div>
-    </section>
-  </main>
-  <script src="popup.js"></script>
-</body>
-
+      <footer>SIAPS-TOOL <span>•</span> DAPS • Betim/MG <span>•</span> v0.1.0</footer>
+    </main>
+    <script src="popup.js"></script>
+  </body>
 </html>

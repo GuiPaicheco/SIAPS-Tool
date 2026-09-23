@@ -1,6 +1,13 @@
-window.addEventListener(
-  "message",
-  event => {
+if (
+  !globalThis.__SIAPS_TOOL_BRIDGE_ATIVA__
+) {
+
+  globalThis.__SIAPS_TOOL_BRIDGE_ATIVA__ =
+    true;
+
+  window.addEventListener(
+    "message",
+    event => {
 
     if (
       event.source !== window ||
@@ -15,5 +22,7 @@ window.addEventListener(
       event.data
     );
 
-  }
-);
+    }
+  );
+
+}

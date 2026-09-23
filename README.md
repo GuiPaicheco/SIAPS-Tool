@@ -27,6 +27,7 @@ O motor continua em `main.js` e é executado no contexto principal da página SI
 
 ## Urgente:
 - Ampliar amplitude das comptências;
+- Melhorar a documentação dos arquivos (nomear como por exemplo, C1-eSB-06-2026 ou C3-eAPP-07-2026)
 
 ## Futuras:
 1. Instalação facilitada;

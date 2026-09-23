@@ -1,20 +1,12 @@
 (async () => {
 
   // ============================================================
-  // SIAPS — EXPORTADOR COMPLETO
-  // VISÃO POR COMPETÊNCIA
-  //
-  // 31 INDICADORES
-  // TODOS OS TIPOS DE EQUIPE
-  // TODAS AS EQUIPES
-  // TODAS AS PÁGINAS
-  //
-  // MUNICÍPIO: BETIM/MG
-  // IBGE: 310670
-  // COMPETÊNCIA: 06/2026
+  // Desenvolvido por: Guilherme Paicheco Ferreira (guilherme.paicheco@betim.mg.gov.br)
   // ============================================================
-
-
+  // Aplicação consolidadora de planilhas do SIAPS
+  // Público-Alvo: profissionais de saúde e gestores municipais
+  // 31 INDICADORES (eESF, eSB, eMulti, eCR, eAPP, eSFR)
+  // MUNICÍPIO: BETIM/MG IBGE: 310670
   // ============================================================
   // CONFIGURAÇÃO
   // ============================================================
@@ -32,6 +24,8 @@
     "MG";
 
   const COMPETENCIA =
+    window.__SIAPS_TOOL_CONFIG__
+      ?.competencia ||
     "202606";
 
   /*
@@ -353,9 +347,15 @@
 
   delete window.__SIAPS_TOOL_CONFIG__;
 
-  const incluirMetadados =
-    configuracaoInterface.incluirMetadados !==
-    false;
+ const incluirMetadados =
+   configuracaoInterface.incluirMetadados !==
+   false;
+
+  const modoDados =
+    configuracaoInterface.modoDados ===
+    "analitico"
+      ? "analitico"
+      : "completo";
 
   const indicadoresSelecionados =
     Array.isArray(
@@ -381,6 +381,42 @@
       configuracaoInterface.equipes ||
       []
     );
+
+  const direcaoOrdenacao =
+    configuracaoInterface.ordenacao?.direcao ===
+    "asc"
+      ? "asc"
+      : "desc";
+
+  const modoOperacao =
+    configuracaoInterface.modo ||
+    "exportar";
+
+  function codigoExibicaoIndicador(
+    indicador
+  ) {
+
+    const prefixos = {
+      C: "eSF/eAP",
+      O: "eSB",
+      M: "eMulti",
+      R: "eCR",
+      A: "eAPP",
+      S: "eSFR"
+    };
+
+    const numero =
+      String(
+        indicador.codigo ||
+        ""
+      ).replace(
+        /^\D+/,
+        ""
+      );
+
+    return `${prefixos[indicador.grupo] || indicador.grupo}${numero}`;
+
+  }
 
   function publicarProgresso(
     mensagem,
@@ -416,7 +452,16 @@
         COMPETENCIA,
 
       indicadores:
-        INDICADORES
+        INDICADORES.map(
+          indicador =>
+            ({
+              ...indicador,
+              codigoExibicao:
+                codigoExibicaoIndicador(
+                  indicador
+                )
+            })
+        )
 
     };
 
@@ -518,6 +563,10 @@
   // ============================================================
   // INÍCIO
   // ============================================================
+
+  publicarProgresso(
+    "Motor SIAPS iniciado. Validando configuração..."
+  );
 
   console.clear();
 
@@ -1360,7 +1409,13 @@
           {
             valor: codigoEquipe,
             rotulo:
-              `${codigoEquipe} - ${equipe.noEquipe ?? "Sem equipe"}`
+              equipe.noEquipe ??
+              "Sem equipe",
+            unidade: cnes,
+            ine: codigoEquipe,
+            tipo:
+              equipe.sgEquipe ??
+              ""
           }
         );
 
@@ -1413,8 +1468,23 @@
   }
 
   function filtrarEquipes(
-    equipes
+    equipes,
+    filtros = {}
   ) {
+
+    const unidades =
+      filtros.unidades
+        ? new Set(
+            filtros.unidades
+          )
+        : unidadesSelecionadas;
+
+    const equipesFiltro =
+      filtros.equipes
+        ? new Set(
+            filtros.equipes
+          )
+        : equipesSelecionadas;
 
     return equipes.filter(
       equipe => {
@@ -1432,10 +1502,10 @@
           );
 
         return (
-          (!unidadesSelecionadas.size ||
-            unidadesSelecionadas.has(cnes)) &&
-          (!equipesSelecionadas.size ||
-            equipesSelecionadas.has(codigoEquipe))
+          (!unidades.size ||
+            unidades.has(cnes)) &&
+          (!equipesFiltro.size ||
+            equipesFiltro.has(codigoEquipe))
         );
 
       }
@@ -1508,9 +1578,10 @@
   // CONSTRUIR COLUNAS
   // ============================================================
 
-  function construirColunas(
-    variaveis
-  ) {
+ function construirColunas(
+    variaveis,
+    modo = modoDados
+ ) {
 
     const colunas = [
 
@@ -1528,11 +1599,27 @@
 
       "NOME DA EQUIPE",
 
-      "SIGLA DA EQUIPE"
+     "SIGLA DA EQUIPE"
 
-    ];
+   ];
 
-    const ordenadas =
+    if (
+      modo === "analitico"
+    ) {
+
+      colunas.push(
+        "PONTUAÇÃO"
+      );
+
+      colunas.push(
+        "CLASSIFICAÇÃO"
+      );
+
+      return colunas;
+
+    }
+
+   const ordenadas =
       [...variaveis]
         .filter(
           v =>
@@ -1616,15 +1703,19 @@
   function construirDados(
     equipes,
     variaveis,
-    indicadorId,
-    indicadorConfigurado
-  ) {
+   indicadorId,
+   indicadorConfigurado,
+    direcao = direcaoOrdenacao,
+    modo = modoDados
+ ) {
 
     const dados =
       [];
 
     const variaveisParametros =
-      [...variaveis]
+      (modo === "analitico"
+        ? []
+        : [...variaveis])
         .filter(
           v =>
             v.noParametro &&
@@ -1654,7 +1745,7 @@
           COMPETENCIA
         ),
 
-        `${indicadorConfigurado.codigo} - ${indicadorConfigurado.nome}`,
+        `${codigoExibicaoIndicador(indicadorConfigurado)} - ${indicadorConfigurado.nome}`,
 
         equipe.coCnes ??
           "",
@@ -1756,17 +1847,23 @@
 
         }
 
-        linha.push(
-          indicador
-            ?.numerador ??
-          null
-        );
+        if (
+          modo !== "analitico"
+        ) {
 
-        linha.push(
-          indicador
-            ?.denominador ??
-          null
-        );
+          linha.push(
+            indicador
+              ?.numerador ??
+            null
+          );
+
+          linha.push(
+            indicador
+              ?.denominador ??
+            null
+          );
+
+        }
 
         linha.push(
           indicador
@@ -1853,10 +1950,9 @@
 
           }
 
-          return (
-            pontuacaoB -
-            pontuacaoA
-          );
+          return direcao === "asc"
+            ? pontuacaoA - pontuacaoB
+            : pontuacaoB - pontuacaoA;
 
         }
       )
@@ -1867,8 +1963,123 @@
 
   }
 
+  function ordenarDadosPorColuna(
+    dados,
+    colunas,
+    ordenacao = {}
+  ) {
 
-  // ============================================================
+    const campo =
+      ordenacao.campo;
+
+    const indice =
+      colunas.indexOf(campo);
+
+    const campoPontuacao =
+      colunas[colunas.length - 2];
+
+   /*
+     * PONTUACAO ja e ordenada em construirDados com o score bruto
+     * retornado pelo SIAPS. Nunca use scoreFormatado para comparar.
+     */
+    if (
+      !campo ||
+      campo === "score" ||
+      campo === campoPontuacao
+    ) {
+
+      return dados;
+
+    }
+
+   if (
+     indice < 0
+    ) {
+
+      return dados;
+
+    }
+
+    const direcao =
+      ordenacao.direcao === "asc"
+        ? 1
+        : -1;
+
+    const vazio =
+      valor =>
+        valor == null ||
+        String(valor).trim() === "";
+
+    const numero =
+      valor => {
+
+        if (
+          typeof valor === "number" &&
+          Number.isFinite(valor)
+        ) {
+
+          return valor;
+
+        }
+
+        const texto =
+          String(valor).trim();
+
+        if (
+          !/^-?(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d+)?$/.test(texto)
+        ) {
+
+          return null;
+
+        }
+
+        const normalizado =
+          texto.includes(",")
+            ? texto.replace(/\./g, "").replace(",", ".")
+            : texto;
+
+        const resultado =
+          Number(normalizado);
+
+        return Number.isFinite(resultado)
+          ? resultado
+          : null;
+
+      };
+
+    return [...dados].sort(
+      (linhaA, linhaB) => {
+
+        const valorA = linhaA[indice];
+        const valorB = linhaB[indice];
+
+        /* Valores ausentes ou invalidos ficam sempre no fim. */
+        if (vazio(valorA) && vazio(valorB)) return 0;
+        if (vazio(valorA)) return 1;
+        if (vazio(valorB)) return -1;
+
+        const numeroA = numero(valorA);
+        const numeroB = numero(valorB);
+
+        if (numeroA != null && numeroB != null) {
+
+          return direcao * (numeroA - numeroB);
+
+        }
+
+        return direcao * String(valorA).localeCompare(
+          String(valorB),
+          "pt-BR",
+          { numeric: true, sensitivity: "base" }
+        );
+
+      }
+    );
+
+  }
+
+
+ // ============================================================
   // CABEÇALHO
   // ============================================================
 
@@ -2215,7 +2426,8 @@
     indicador,
     tipos,
     variaveis,
-    equipes
+    equipes,
+    opcoes = {}
   ) {
 
     info(
@@ -2225,25 +2437,41 @@
     const workbook =
       new ExcelJS.Workbook();
 
-    const worksheet =
-      workbook.addWorksheet(
-        "Relatório - SIAPS"
-      );
+   const worksheet =
+     workbook.addWorksheet(
+       "Relatório - SIAPS"
+     );
 
-    const colunas =
-      construirColunas(
-        variaveis
-      );
+    const modoDadosExportacao =
+      opcoes.modoDados === "analitico"
+        ? "analitico"
+        : modoDados;
 
-    const dados =
-      construirDados(
+   const colunas =
+     construirColunas(
+        variaveis,
+        modoDadosExportacao
+     );
+
+    let dados =
+     construirDados(
         equipes,
         variaveis,
         indicador.id,
-        indicador
+       indicador,
+       opcoes.ordenacao?.direcao ||
+         direcaoOrdenacao,
+        modoDadosExportacao
+     );
+
+    dados =
+      ordenarDadosPorColuna(
+        dados,
+        colunas,
+        opcoes.ordenacao
       );
 
-    const quantidadeClassificacoes =
+   const quantidadeClassificacoes =
       colunas.filter(
         coluna =>
           coluna ===
@@ -2299,6 +2527,7 @@
     );
 
     const linhas =
+      opcoes.incluirMetadados ??
       incluirMetadados
         ? [
 
@@ -2425,6 +2654,82 @@
   }
 
 
+  window.__SIAPS_TOOL_EXPORTAR_CONSOLIDACAO__ =
+    async opcoes => {
+
+      const consolidacao =
+        window.__SIAPS_TOOL_CONSOLIDACAO__;
+
+      if (
+        !consolidacao ||
+        !Array.isArray(
+          consolidacao.relatorios
+        )
+      ) {
+
+        throw new Error(
+          "A consolidação não está disponível nesta aba. Gere uma nova consolidação."
+        );
+
+      }
+
+      const arquivos =
+        [];
+
+      for (
+        const relatorio
+        of consolidacao.relatorios
+      ) {
+
+        const equipes =
+          filtrarEquipes(
+            relatorio.equipes,
+            opcoes
+          );
+
+        if (
+          !equipes.length
+        ) {
+
+          continue;
+
+        }
+
+        arquivos.push(
+          await exportarExcel(
+            relatorio.indicador,
+            relatorio.tipos,
+            relatorio.variaveis,
+            equipes,
+            opcoes
+          )
+        );
+
+      }
+
+      if (
+        !arquivos.length
+      ) {
+
+        throw new Error(
+          "Nenhum registro corresponde aos filtros selecionados."
+        );
+
+      }
+
+      publicarProgresso(
+        "✓ Planilha gerada com sucesso.",
+        "success"
+      );
+
+      return {
+        arquivos:
+          arquivos.length
+      };
+
+    };
+
+
   // ============================================================
   // ETAPA 3 — COLETA E EXPORTAÇÃO
   // ============================================================
@@ -2450,7 +2755,22 @@
   const resultados =
     [];
 
-  for (
+ const relatoriosConsolidados =
+   [];
+
+ const camposOrdenacao =
+   new Set();
+
+  const camposOrdenacaoAnaliticos =
+    construirColunas(
+      [],
+      "analitico"
+    );
+
+ let campoPadraoOrdenacao =
+    "score";
+
+ for (
     let i = 0;
     i < indicadoresSelecionados.length;
     i++
@@ -2559,18 +2879,54 @@
 
       }
 
+      const colunasOrdenacao =
+        construirColunas(
+        variaveis
+        );
 
-      // --------------------------------------------------------
+      colunasOrdenacao.forEach(
+        coluna =>
+          camposOrdenacao.add(coluna)
+      );
+
+      campoPadraoOrdenacao =
+        colunasOrdenacao[
+          colunasOrdenacao.length - 2
+        ] ||
+        campoPadraoOrdenacao;
+
+
+     // --------------------------------------------------------
       // XLSX
       // --------------------------------------------------------
 
-      const arquivo =
-        await exportarExcel(
+      let arquivo =
+        null;
+
+      if (
+        modoOperacao ===
+        "consolidar"
+      ) {
+
+        relatoriosConsolidados.push({
           indicador,
           tipos,
           variaveis,
-          equipesFiltradas
-        );
+          equipes:
+            equipesFiltradas
+        });
+
+      } else {
+
+        arquivo =
+          await exportarExcel(
+            indicador,
+            tipos,
+            variaveis,
+            equipesFiltradas
+          );
+
+      }
 
       const segundos =
         (
@@ -2613,9 +2969,15 @@
         `✅ ${indicador.codigo} FINALIZADO em ${segundos}s`
       );
 
-      log(
-        `   📁 ${arquivo}`
-      );
+      if (
+        arquivo
+      ) {
+
+        log(
+          `   📁 ${arquivo}`
+        );
+
+      }
 
       const concluidos =
         resultados.filter(
@@ -2695,6 +3057,47 @@
 
   }
 
+
+  if (
+    modoOperacao ===
+    "consolidar"
+  ) {
+
+    const registros =
+      relatoriosConsolidados.reduce(
+        (total, relatorio) =>
+          total + relatorio.equipes.length,
+        0
+      );
+
+    window.__SIAPS_TOOL_CONSOLIDACAO__ = {
+      competencia: COMPETENCIA,
+      indicadores: indicadoresSelecionados.map(indicador => indicador.codigo),
+      relatorios: relatoriosConsolidados
+    };
+
+    window.postMessage({
+      source: "SIAPS_TOOL",
+      type: "consolidation",
+      resumo: {
+        competencia: COMPETENCIA,
+        indicadores: relatoriosConsolidados.length,
+       indicadoresCodigos: indicadoresSelecionados.map(indicador => indicador.codigo),
+       camposOrdenacao: [...camposOrdenacao],
+        camposOrdenacaoAnaliticos,
+       campoPadraoOrdenacao,
+        unidades: window.__SIAPS_TOOL_OPCOES__?.unidades.length || 0,
+        equipes: window.__SIAPS_TOOL_OPCOES__?.equipes.length || 0,
+        registros
+      }
+    }, "*");
+
+    publicarProgresso(
+      "✓ Consolidação concluída. Ajuste os filtros e baixe a planilha.",
+      "success"
+    );
+
+  }
 
   // ============================================================
   // ETAPA 4 — CONFERÊNCIA FINAL
@@ -2859,7 +3262,9 @@
 
   publicarProgresso(
     falhas.length === 0
-      ? "✓ Relatório gerado com sucesso."
+      ? modoOperacao === "consolidar"
+        ? "✓ Consolidação concluída."
+        : "✓ Relatório gerado com sucesso."
       : "✕ Relatório concluído com erros. Consulte os detalhes.",
     falhas.length === 0
       ? "success"
@@ -2868,4 +3273,23 @@
 
   separador();
 
-})();
+})().catch(
+  erro => {
+
+    console.error(
+      "SIAPS-TOOL: erro inesperado no motor.",
+      erro
+    );
+
+    window.postMessage(
+      {
+        source: "SIAPS_TOOL",
+        type: "progress",
+        mensagem: `Erro inesperado: ${erro.message}`,
+        nivel: "error"
+      },
+      "*"
+    );
+
+  }
+);
