@@ -7,6 +7,7 @@ const state = {
   opcoes: { unidades: [], equipes: [] },
   emExecucao: false,
   consolidacao: null,
+  competencias: [],
   controllers: {}
 };
 
@@ -14,8 +15,10 @@ const ui = {
   form: document.querySelector("#reportForm"),
   competenciaMes: document.querySelector("#competenciaMes"),
   competenciaAno: document.querySelector("#competenciaAno"),
- competenciaHelp: document.querySelector("#competenciaHelp"),
- metadados: document.querySelector("#metadados"),
+  competenciaHelp: document.querySelector("#competenciaHelp"),
+  adicionarCompetencia: document.querySelector("#adicionarCompetencia"),
+  competenciasSelecionadas: document.querySelector("#competenciasSelecionadas"),
+  metadados: document.querySelector("#metadados"),
   modoDados: document.querySelector("#modoDados"),
  campoOrdenacao: document.querySelector("#ordenarCampo"),
   direcaoOrdenacao: document.querySelector("#ordenarDirecao"),
@@ -60,6 +63,36 @@ function formatarCompetencia(valor) {
 
 function competenciaAtual() {
   return `${ui.competenciaAno.value}${ui.competenciaMes.value}`;
+}
+
+function competenciasSelecionadas() {
+  return [...state.competencias];
+}
+
+function atualizarCompetenciasSelecionadas() {
+  const competencias = competenciasSelecionadas();
+  ui.competenciasSelecionadas.innerHTML = competencias.map(competencia =>
+    `<span class="competencia-chip">${escapear(formatarCompetencia(competencia))}<button type="button" data-competencia="${escapear(competencia)}" aria-label="Remover ${escapear(formatarCompetencia(competencia))}">×</button></span>`
+  ).join("");
+  ui.competenciaHelp.textContent = competencias.length
+    ? `${competencias.length} competência(s) selecionada(s): ${competencias.join(", ")}`
+    : "Adicione ao menos uma competência.";
+}
+
+function adicionarCompetencia() {
+  const competencia = competenciaAtual();
+  if (!/^\d{6}$/.test(competencia)) {
+    ui.errors.competencia.textContent = "Informe um mês e ano válidos.";
+    return;
+  }
+  if (!state.competencias.includes(competencia)) {
+    state.competencias.push(competencia);
+    state.competencias.sort((a, b) => b.localeCompare(a));
+    invalidarConsolidacao();
+  }
+  ui.errors.competencia.textContent = "";
+  atualizarCompetenciasSelecionadas();
+  salvarConfiguracao();
 }
 
 function escapear(texto) {
@@ -185,6 +218,7 @@ function salvarConfiguracao() {
   chrome.storage.local.set({
     [STORAGE_CONFIG]: {
       competencia: competenciaAtual(),
+      competencias: competenciasSelecionadas(),
       indicadores: state.controllers.indicadores.getValues(),
       unidades: state.controllers.unidades.getValues(),
      equipes: state.controllers.equipes.getValues(),
@@ -250,7 +284,7 @@ function aplicarEstadoExecucao(execucao) {
   ui.baixar.disabled = state.emExecucao || !state.consolidacao;
   ui.consolidar.classList.toggle("loading", state.emExecucao);
   ui.baixar.classList.toggle("loading", state.emExecucao);
-  ui.consolidar.querySelector(".button-label").textContent = state.emExecucao ? "Gerando consolidação..." : "Gerar consolidação";
+  ui.consolidar.querySelector(".button-label").textContent = state.emExecucao ? "Gerando consolidações..." : state.competencias.length > 1 ? "Gerar consolidações" : "Gerar consolidação";
   definirStatus(execucao.status, execucao.nivel || "info");
   renderLog(execucao.mensagens || []);
   (execucao.mensagens || []).forEach(item => atualizarProgresso(item.mensagem));
@@ -265,7 +299,8 @@ function atualizarResumoConsolidacao() {
     return;
   }
   ui.resumo.hidden = false;
-  ui.resumo.innerHTML = `<strong>✓ Consolidação concluída</strong>Competência: ${escapear(formatarCompetencia(resumo.competencia))}<br>Indicadores: ${resumo.indicadores}<br>Unidades encontradas: ${resumo.unidades}<br>Equipes encontradas: ${resumo.equipes}<br>Registros: ${resumo.registros}`;
+  const competencias = resumo.competencias || [resumo.competencia];
+  ui.resumo.innerHTML = `<strong>✓ Consolidação concluída</strong>Competências: ${escapear(competencias.map(formatarCompetencia).join(", "))}<br>Indicadores: ${resumo.indicadores}<br>Unidades encontradas: ${resumo.unidades}<br>Equipes encontradas: ${resumo.equipes}<br>Registros: ${resumo.registros}`;
   atualizarContagemExportacao();
 }
 
@@ -311,7 +346,9 @@ function invalidarConsolidacao() {
 
 function consolidacaoCompativel() {
   if (!state.consolidacao) return false;
-  if (state.consolidacao.competencia !== competenciaAtual()) return false;
+  const consolidadas = state.consolidacao.competencias || [state.consolidacao.competencia];
+  const atuais = competenciasSelecionadas();
+  if (atuais.length !== consolidadas.length || !atuais.every(competencia => consolidadas.includes(competencia))) return false;
   const atual = state.controllers.indicadores.getValues();
   const codigos = state.consolidacao.indicadoresCodigos || [];
   const selecionados = atual.length ? atual : state.catalogo.indicadores.map(indicador => indicador.codigo);
@@ -321,7 +358,7 @@ function consolidacaoCompativel() {
 function validar() {
   Object.values(ui.errors).forEach(elemento => { elemento.textContent = ""; });
   let valido = true;
-  if (!/^\d{6}$/.test(competenciaAtual())) { ui.errors.competencia.textContent = "Informe um mês e ano válidos."; valido = false; }
+  if (!competenciasSelecionadas().length) { ui.errors.competencia.textContent = "Adicione ao menos uma competência."; valido = false; }
   if (!state.controllers.indicadores.getSelectedCount()) { ui.errors.indicadores.textContent = "Selecione pelo menos um indicador."; valido = false; }
   const unidades = state.controllers.unidades.getValues();
   if (unidades.length && !unidades.some(valor => state.opcoes.unidades.some(unidade => unidade.valor === valor))) { ui.errors.unidades.textContent = "Selecione ao menos uma unidade válida."; valido = false; }
@@ -334,6 +371,7 @@ function validar() {
 function configuracaoMotor() {
   return {
     competencia: competenciaAtual(),
+    competencias: competenciasSelecionadas(),
     indicadores: state.controllers.indicadores.getValues(),
     unidades: state.controllers.unidades.getValues(),
    equipes: state.controllers.equipes.getValues(),
@@ -421,7 +459,8 @@ async function iniciar() {
     const competencia = configuracaoSalva.competencia || state.catalogo.competencia;
     ui.competenciaAno.value = String(competencia).slice(0, 4);
     ui.competenciaMes.value = String(competencia).slice(4, 6);
-    ui.competenciaHelp.textContent = `Competência SIAPS: ${competenciaAtual()}`;
+    state.competencias = [...new Set(configuracaoSalva.competencias?.length ? configuracaoSalva.competencias : [competencia])];
+    atualizarCompetenciasSelecionadas();
     configurarControles(configuracaoSalva);
     preencherOpcoes(opcoesDados.siapsToolOptions, configuracaoSalva);
     atualizarCamposOrdenacao();
@@ -460,8 +499,17 @@ ui.metadados.addEventListener("change", salvarConfiguracao);
 ui.modoDados.addEventListener("change", () => { atualizarCamposOrdenacao(); salvarConfiguracao(); });
 ui.campoOrdenacao.addEventListener("change", () => { atualizarContagemExportacao(); salvarConfiguracao(); });
 ui.direcaoOrdenacao.addEventListener("change", salvarConfiguracao);
-ui.competenciaMes.addEventListener("change", () => { ui.competenciaHelp.textContent = `Competência SIAPS: ${competenciaAtual()}`; invalidarConsolidacao(); salvarConfiguracao(); });
-ui.competenciaAno.addEventListener("change", () => { ui.competenciaHelp.textContent = `Competência SIAPS: ${competenciaAtual()}`; invalidarConsolidacao(); salvarConfiguracao(); });
+ui.adicionarCompetencia.addEventListener("click", adicionarCompetencia);
+ui.competenciasSelecionadas.addEventListener("click", event => {
+  const competencia = event.target.dataset.competencia;
+  if (!competencia) return;
+  state.competencias = state.competencias.filter(item => item !== competencia);
+  invalidarConsolidacao();
+  atualizarCompetenciasSelecionadas();
+  salvarConfiguracao();
+});
+ui.competenciaMes.addEventListener("change", () => { ui.errors.competencia.textContent = ""; });
+ui.competenciaAno.addEventListener("change", () => { ui.errors.competencia.textContent = ""; });
 ui.limparLog.addEventListener("click", () => chrome.runtime.sendMessage({ type: "clearExecutionLog" }, resposta => renderLog(resposta.mensagens || [])));
 
 document.addEventListener("click", event => Object.values(state.controllers).forEach(controlador => {

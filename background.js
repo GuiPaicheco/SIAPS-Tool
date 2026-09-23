@@ -2,6 +2,9 @@
 const CHAVE_EXECUCAO =
   "siapsToolExecution";
 
+const CHAVE_MULTI_CONSOLIDACAO =
+  "siapsToolMultiConsolidacao";
+
 let filaEventos =
   Promise.resolve();
 
@@ -29,7 +32,7 @@ async function registrarMensagem(mensagem) {
     horario: new Date().toISOString()
   }].slice(-200);
   const finalizada =
-    /Relatório gerado com sucesso\.|Relatório concluído com erros\.|Planilha gerada com sucesso\.|Consolidação concluída\.|Erro inesperado:|access_token não encontrado|ExcelJS não encontrado|Exportação interrompida/.test(
+    /Planilha gerada com sucesso\.|Erro inesperado:|access_token não encontrado|ExcelJS não encontrado|Exportação interrompida/.test(
       mensagem.mensagem
     );
   return salvarExecucao({
@@ -93,7 +96,35 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
       status: "Processando relatório...",
       nivel: "info"
     })
-      .then(() => executarNoSiaps(mensagem.tabId, mensagem.configuracao))
+      .then(async () => {
+        const competencias = [...new Set(
+          mensagem.configuracao.competencias?.length
+            ? mensagem.configuracao.competencias
+            : [mensagem.configuracao.competencia]
+        )];
+        const [primeira, ...restantes] = competencias;
+        const configuracao = {
+          ...mensagem.configuracao,
+          competencia: primeira
+        };
+        await chrome.storage.session.set({
+          [CHAVE_MULTI_CONSOLIDACAO]: {
+            tabId: mensagem.tabId,
+            configuracao,
+            restantes,
+            total: competencias.length
+          }
+        });
+        await chrome.scripting.executeScript({
+          target: { tabId: mensagem.tabId },
+          world: "MAIN",
+          func: () => {
+            window.__SIAPS_TOOL_CONSOLIDACAO__ = null;
+            window.__SIAPS_TOOL_OPCOES__ = null;
+          }
+        });
+        return executarNoSiaps(mensagem.tabId, configuracao);
+      })
       .then(() => responder({ iniciado: true }))
       .catch(async erro => {
         await salvarExecucao({
@@ -151,6 +182,54 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
             }
 
             if (mensagem.type === "consolidation") {
+              const dadosMulti = await chrome.storage.session.get(
+                CHAVE_MULTI_CONSOLIDACAO
+              );
+              const multi = dadosMulti[
+                CHAVE_MULTI_CONSOLIDACAO
+              ];
+
+              if (
+                multi?.tabId === sender.tab.id &&
+                multi.restantes.length
+              ) {
+                const [proxima, ...restantes] =
+                  multi.restantes;
+                const configuracao = {
+                  ...multi.configuracao,
+                  competencia: proxima
+                };
+                await chrome.storage.session.set({
+                  [CHAVE_MULTI_CONSOLIDACAO]: {
+                    ...multi,
+                    restantes,
+                    configuracao
+                  }
+                });
+                await salvarExecucao({
+                  emExecucao: true,
+                  status: `Consolidando competência ${multi.total - restantes.length} de ${multi.total}...`,
+                  nivel: "info"
+                });
+                await executarNoSiaps(
+                  sender.tab.id,
+                  configuracao
+                );
+                chrome.runtime.sendMessage({
+                  source: "SIAPS_TOOL",
+                  type: "progress",
+                  mensagem: `Consolidando competência ${multi.total - restantes.length} de ${multi.total}...`,
+                  nivel: "info"
+                });
+                return;
+              }
+
+              if (multi?.tabId === sender.tab.id) {
+                await chrome.storage.session.remove(
+                  CHAVE_MULTI_CONSOLIDACAO
+                );
+              }
+
               await salvarExecucao({
                 emExecucao: false,
                 consolidacao:

@@ -1700,13 +1700,14 @@
   // CONSTRUIR DADOS
   // ============================================================
 
-  function construirDados(
-    equipes,
-    variaveis,
+ function construirDados(
+   equipes,
+   variaveis,
    indicadorId,
    indicadorConfigurado,
-    direcao = direcaoOrdenacao,
-    modo = modoDados
+   direcao = direcaoOrdenacao,
+    modo = modoDados,
+    competencia = COMPETENCIA
  ) {
 
     const dados =
@@ -1742,7 +1743,7 @@
       const linha = [
 
         formatarCompetencia(
-          COMPETENCIA
+          competencia
         ),
 
         `${codigoExibicaoIndicador(indicadorConfigurado)} - ${indicadorConfigurado.nome}`,
@@ -2442,10 +2443,14 @@
        "Relatório - SIAPS"
      );
 
-    const modoDadosExportacao =
-      opcoes.modoDados === "analitico"
-        ? "analitico"
-        : modoDados;
+   const modoDadosExportacao =
+     opcoes.modoDados === "analitico"
+       ? "analitico"
+       : modoDados;
+
+    const competenciaExportacao =
+      opcoes.competencia ||
+      COMPETENCIA;
 
    const colunas =
      construirColunas(
@@ -2461,7 +2466,8 @@
        indicador,
        opcoes.ordenacao?.direcao ||
          direcaoOrdenacao,
-        modoDadosExportacao
+        modoDadosExportacao,
+        competenciaExportacao
      );
 
     dados =
@@ -2542,7 +2548,7 @@
             ],
 
             [
-              `Competência: ${COMPETENCIA}`
+              `Competência: ${competenciaExportacao}`
             ],
 
             [
@@ -2611,7 +2617,7 @@
       );
 
     const arquivo =
-      `${indicador.codigo}_${nomeSeguro(indicador.nome)}_${COMPETENCIA}.xlsx`;
+      `${indicador.codigo}_${nomeSeguro(indicador.nome)}_${competenciaExportacao}.xlsx`;
 
     const url =
       URL.createObjectURL(
@@ -2663,6 +2669,7 @@
       if (
         !consolidacao ||
         !Array.isArray(
+          consolidacao.competencias ||
           consolidacao.relatorios
         )
       ) {
@@ -2673,18 +2680,31 @@
 
       }
 
-      const arquivos =
-        [];
+     const arquivos =
+       [];
 
-      for (
-        const relatorio
-        of consolidacao.relatorios
+      const relatorios =
+        consolidacao.competencias
+          ? consolidacao.competencias.flatMap(
+              competencia =>
+                competencia.relatorios
+            )
+          : consolidacao.relatorios;
+
+     for (
+       const relatorio
+        of relatorios
       ) {
 
         const equipes =
           filtrarEquipes(
             relatorio.equipes,
-            opcoes
+            {
+              ...opcoes,
+              competencia:
+                relatorio.competencia ||
+                consolidacao.competencia
+            }
           );
 
         if (
@@ -2909,6 +2929,7 @@
       ) {
 
         relatoriosConsolidados.push({
+          competencia: COMPETENCIA,
           indicador,
           tipos,
           variaveis,
@@ -3063,8 +3084,38 @@
     "consolidar"
   ) {
 
+    const anteriores =
+      Array.isArray(
+        window.__SIAPS_TOOL_CONSOLIDACAO__
+          ?.competencias
+      )
+        ? window.__SIAPS_TOOL_CONSOLIDACAO__
+            .competencias
+            .filter(
+              item =>
+                item.competencia !==
+                COMPETENCIA
+            )
+        : [];
+
+    const competenciasConsolidadas =
+      [
+        ...anteriores,
+        {
+          competencia: COMPETENCIA,
+          relatorios:
+            relatoriosConsolidados
+        }
+      ];
+
+    const todosRelatorios =
+      competenciasConsolidadas.flatMap(
+        item =>
+          item.relatorios
+      );
+
     const registros =
-      relatoriosConsolidados.reduce(
+      todosRelatorios.reduce(
         (total, relatorio) =>
           total + relatorio.equipes.length,
         0
@@ -3072,16 +3123,19 @@
 
     window.__SIAPS_TOOL_CONSOLIDACAO__ = {
       competencia: COMPETENCIA,
+      competencias:
+        competenciasConsolidadas,
       indicadores: indicadoresSelecionados.map(indicador => indicador.codigo),
-      relatorios: relatoriosConsolidados
+      relatorios: todosRelatorios
     };
 
     window.postMessage({
       source: "SIAPS_TOOL",
       type: "consolidation",
       resumo: {
-        competencia: COMPETENCIA,
-        indicadores: relatoriosConsolidados.length,
+       competencia: COMPETENCIA,
+        competencias: competenciasConsolidadas.map(item => item.competencia),
+        indicadores: todosRelatorios.length,
        indicadoresCodigos: indicadoresSelecionados.map(indicador => indicador.codigo),
        camposOrdenacao: [...camposOrdenacao],
         camposOrdenacaoAnaliticos,
