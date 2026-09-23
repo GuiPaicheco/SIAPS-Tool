@@ -2616,8 +2616,8 @@
         }
       );
 
-    const arquivo =
-      `${indicador.codigo}_${nomeSeguro(indicador.nome)}_${competenciaExportacao}.xlsx`;
+   const arquivo =
+      `${nomeSeguro(codigoExibicaoIndicador(indicador))}_${nomeSeguro(indicador.nome)}_${nomeSeguro(formatarCompetencia(competenciaExportacao))}.xlsx`;
 
     const url =
       URL.createObjectURL(
@@ -2696,16 +2696,11 @@
         of relatorios
       ) {
 
-        const equipes =
-          filtrarEquipes(
-            relatorio.equipes,
-            {
-              ...opcoes,
-              competencia:
-                relatorio.competencia ||
-                consolidacao.competencia
-            }
-          );
+       const equipes =
+         filtrarEquipes(
+           relatorio.equipes,
+            opcoes
+         );
 
         if (
           !equipes.length
@@ -2719,10 +2714,15 @@
           await exportarExcel(
             relatorio.indicador,
             relatorio.tipos,
-            relatorio.variaveis,
-            equipes,
-            opcoes
-          )
+           relatorio.variaveis,
+           equipes,
+            {
+              ...opcoes,
+              competencia:
+                relatorio.competencia ||
+                consolidacao.competencia
+            }
+         )
         );
 
       }
