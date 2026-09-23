@@ -1,34 +1,65 @@
-# SIAPS-TOOL 1.0.0
+# **SIAPS-TOOL**
 
-Extensão Chrome interna da DAPS Betim/MG para consolidar dados da Visão por Competência do SIAPS e exportar relatórios XLSX.
+Extensão para Google Chrome. Ferramenta interna da **_Diretoria de Atenção Primária á Saúde - Betim/MG_** para facilitar a consolidação das planilhas no **_SIAPS_**.
 
-## Instalação interna
+## Tutorial para Instalação e Uso da Ferramenta
 
-1. Extraia o pacote `SIAPS-TOOL-1.0.0.zip` em uma pasta local.
-2. Abra `chrome://extensions` no Google Chrome.
-3. Ative o **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação** e selecione a pasta extraída (a pasta que contém `manifest.json`).
-5. Abra `https://siaps.saude.gov.br/`, entre no SIAPS e acesse a Visão por Competência.
-6. Abra o popup da extensão pelo ícone do Chrome.
+### Instalação:
 
-Não há tela de login própria: a extensão usa exclusivamente a sessão autenticada já existente no SIAPS, inclusive o `access_token` da página.
+1. Faça o **download** da ferramenta em ".zip":
 
-## Como usar
+`Baixe por aqui`:
+![Instalação do .ZIP](./assets/tutorial/tutorial01.png)
 
-1. Adicione uma ou mais competências (mês/ano).
-2. Selecione todos os indicadores, indicadores individuais ou um grupo de equipe (eSF/eAP, eSB, eMulti, eAPP, entre outros).
-3. Clique em **Gerar consolidações**. Essa etapa consulta o SIAPS e mantém os resultados em memória na própria aba do SIAPS; ela não baixa arquivos.
-4. Após a conclusão, filtre unidades e equipes, defina o modo de dados, metadados e ordenação.
+ou
+
+`Link pelo Drive`: (**PRECISA** estar logado no **e-mail INSTITUCIONAL**): https://drive.google.com/file/d/1Fe0-hM-1GPzs0F2tb5_yxi7ViiGQ9MWB/view?usp=sharing
+
+2. Faça a extração do arquivo (mantenha-o em algum lugar seguro para não apagar):
+
+![Extração do .ZIP](./assets/tutorial/tutorial02.png)
+
+3. Abra "[chrome://extensions](chrome://extensions)" no Google Chrome.
+4. Ative o **Modo do desenvolvedor**.
+5. Clique em **Carregar sem compactação** e selecione a pasta que foi extraída.
+
+![Importação da extensão](./assets/tutorial/tutorial03.png)
+![Confirmar importação](./assets/tutorial/tutorial04.png)
+
+**EXTENSÃO IMPORTADA!**
+
+---
+
+### Uso:
+
+1. **Fixe** a estensão para acesso facilitado.
+
+![Fixar Extensão](./assets/tutorial/tutorial05.png)
+
+2. **Faça o login** no SIAPS e acesse a **Visão por Competência**.
+3. **Clique** no ícone da extensão.
+4. **Adicione cada um** dos períodos de **competência** que desejar.
+5. **Selecione** todos os **indicadores** desejados daquela competência.
+
+![Seleção Principal](./assets/tutorial/tutorial06.png)
+
+3. Clique em **Gerar consolidações**. Essa etapa consulta o SIAPS e mantém os resultados em memória na própria aba do SIAPS, ela ainda não baixa os arquivos.
+4. Após a consolidação, **filtre unidades e equipes** que desejar, defina o modo de dados, **cabeçalho** e **ordenação**.
+
+![Filtros](./assets/tutorial/tutorial07.png)
+
 5. Clique em **Baixar planilha**. A exportação reutiliza a consolidação existente, sem nova consulta à API.
 
-O modelo desta versão é um XLSX por indicador e por competência. Quando os filtros resultarem em mais de um arquivo, o popup mostra uma confirmação com a quantidade de arquivos e registros antes de iniciar os downloads.
+> O modelo desta versão é um XLSX por indicador e por competência. Quando os filtros resultarem em mais de um arquivo, o popup mostra uma confirmação com a quantidade de arquivos e registros antes de iniciar os downloads.
 
-## Modos de dados
+## Modos de Formatação
 
-- **Planilha completa:** inclui as variáveis do indicador, além das colunas fixas.
-- **Apenas dados analíticos:** mantém as colunas fixas, pontuação e classificação.
+- **Planilha completa:** Inclui as variáveis do indicador, além das colunas fixas. 
+<br>PÚBLICO: Ideal para análises mais detalhadas.
+- **Apenas dados analíticos:** Mantém apenas o necessário. Colunas fixas e pontuação com classificação.
+<br>PÚBLICO: Ideal para informações rápidas.
 
-Os metadados institucionais podem ser incluídos ou removidos sem alterar a consolidação. A ordenação utiliza `score` numérico; campos disponíveis apenas em parte dos indicadores não são oferecidos como opções para um conjunto misto.
+Os metadados referem se aos dados de confirmação da planilha, que trazem dados como competência, indicadores, etc. Necessário apenas para verificação.
 
 ## Limitações importantes
 
@@ -37,11 +68,7 @@ Os metadados institucionais podem ser incluídos ou removidos sem alterar a cons
 - Muitas competências e indicadores podem consumir memória da aba. A versão não impõe limite, mas recomenda consolidar conjuntos grandes em lotes menores quando necessário.
 - A disponibilidade de dados depende do SIAPS para cada competência e indicador selecionado.
 
-## Estrutura
+---
 
-- `popup.html`, `popup.css`, `popup.js`: interface, estado e validações do popup.
-- `background.js`: coordenação, persistência de estado e ponte com a aba SIAPS.
-- `content.js`: ponte de mensagens entre extensão e página.
-- `main.js`: motor de coleta, consolidação, filtros e geração XLSX.
-
-O motor continua executando no contexto principal da página SIAPS para preservar o ExcelJS e o FileSaver já disponibilizados pelo sistema. Endpoints, autenticação, paginação, retries e fallbacks dos indicadores 118/128 permanecem no motor existente.
+Em casos de dúvidas ou sugestões, envie um e-mail para guilherme.paicheco@betim.mg.gov.br! 
+<br> Um bom trabalho a todos!
