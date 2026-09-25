@@ -2696,10 +2696,174 @@
         equipes: filtrarEquipes(relatorio.equipes, opcoes)
       })).filter(item => item.equipes.length);
       return {
-        arquivos: relatoriosFiltrados.length,
+        arquivos: opcoes.unificacao?.modo === "unificado"
+          ? Number(relatoriosFiltrados.length > 0)
+          : relatoriosFiltrados.length,
         registros: relatoriosFiltrados.reduce((total, item) => total + item.equipes.length, 0)
       };
     };
+
+  function chaveGrupoUnificado(
+    agrupamento,
+    relatorio,
+    equipe
+  ) {
+    if (agrupamento === "competencia") {
+      return {
+        chave: `competencia:${relatorio.competencia}`,
+        rotulo: formatarCompetencia(relatorio.competencia)
+      };
+    }
+    if (agrupamento === "unidade") {
+      return {
+        chave: `unidade:${equipe.coCnes || equipe.noUnidade || "sem-unidade"}`,
+        rotulo: `${equipe.coCnes || "SEM CNES"} - ${equipe.noUnidade || "Unidade não informada"}`
+      };
+    }
+    if (agrupamento === "equipe") {
+      return {
+        chave: `equipe:${equipe.coEquipe || equipe.noEquipe || "sem-equipe"}`,
+        rotulo: `${equipe.coEquipe || "SEM INE"} - ${equipe.noEquipe || "Equipe não informada"}`
+      };
+    }
+    if (agrupamento === "indicador") {
+      return {
+        chave: `indicador:${relatorio.indicador.codigo}`,
+        rotulo: `${codigoExibicaoIndicador(relatorio.indicador)} - ${relatorio.indicador.nome}`
+      };
+    }
+    return {
+      chave: "sequencia",
+      rotulo: "RELATÓRIO CONSOLIDADO"
+    };
+  }
+
+  function colunasUnificadas(blocos, modo) {
+    const colunasFixas = construirColunas([], "analitico").slice(0, -2);
+    const especiais = new Set([
+      ...colunasFixas,
+      "PONTUAÇÃO",
+      "CLASSIFICAÇÃO"
+    ]);
+    const variaveis = [];
+    const conhecidas = new Set();
+
+    if (modo !== "analitico") {
+      blocos.forEach(bloco => {
+        construirColunas(bloco.relatorio.variaveis, modo).forEach(coluna => {
+          if (!especiais.has(coluna) && !conhecidas.has(coluna)) {
+            conhecidas.add(coluna);
+            variaveis.push(coluna);
+          }
+        });
+      });
+    }
+    return [...colunasFixas, ...variaveis, "PONTUAÇÃO", "CLASSIFICAÇÃO"];
+  }
+
+  function dadosUnificados(blocos, colunas, opcoes) {
+    const modo = opcoes.modoDados === "analitico" ? "analitico" : modoDados;
+    const dados = [];
+
+    blocos.forEach(bloco => {
+      const colunasOriginais = construirColunas(bloco.relatorio.variaveis, modo);
+      const indices = new Map(colunasOriginais.map((coluna, indice) => [coluna, indice]));
+      const linhas = construirDados(
+        bloco.equipes,
+        bloco.relatorio.variaveis,
+        bloco.relatorio.indicador.id,
+        bloco.relatorio.indicador,
+        opcoes.ordenacao?.direcao || direcaoOrdenacao,
+        modo,
+        bloco.relatorio.competencia || COMPETENCIA
+      );
+      linhas.forEach(linha => {
+        dados.push(colunas.map(coluna => {
+          const indice = indices.get(coluna);
+          return indice == null ? null : linha[indice];
+        }));
+      });
+    });
+
+    return ordenarDadosPorColuna(dados, colunas, opcoes.ordenacao);
+  }
+
+  async function exportarExcelUnificado(
+    relatoriosExportaveis,
+    opcoes
+  ) {
+    const inicio = Date.now();
+    const agrupamento = opcoes.unificacao?.agruparPor || "sequencia";
+    const grupos = new Map();
+
+    relatoriosExportaveis.forEach(item => {
+      item.equipes.forEach(equipe => {
+        const grupo = chaveGrupoUnificado(agrupamento, item.relatorio, equipe);
+        if (!grupos.has(grupo.chave)) {
+          grupos.set(grupo.chave, { rotulo: grupo.rotulo, blocos: [] });
+        }
+        grupos.get(grupo.chave).blocos.push({
+          relatorio: item.relatorio,
+          equipes: [equipe]
+        });
+      });
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const nomesGuias = new Set();
+    const modo = opcoes.modoDados === "analitico" ? "analitico" : modoDados;
+
+    for (const grupo of grupos.values()) {
+      const colunas = colunasUnificadas(grupo.blocos, modo);
+      const dados = dadosUnificados(grupo.blocos, colunas, opcoes);
+      let nomeGuia = (nomeSeguro(grupo.rotulo) || "DADOS").slice(0, 31);
+      let sufixo = 2;
+      while (nomesGuias.has(nomeGuia)) {
+        nomeGuia = `${nomeGuia.slice(0, 28)}_${sufixo++}`;
+      }
+      nomesGuias.add(nomeGuia);
+
+      const worksheet = workbook.addWorksheet(nomeGuia);
+      const linhas = (opcoes.incluirMetadados ?? incluirMetadados)
+        ? [
+            ...cabecalhoInstitucional(`Relatório consolidado - ${grupo.rotulo}`),
+            ...blocoDemografico(),
+            ["Filtro:"],
+            [`Consolidação: ${grupo.rotulo}`],
+            [""],
+            colunas,
+            ...dados,
+            ...rodape()
+          ]
+        : [colunas, ...dados];
+
+      linhas.forEach(linha => worksheet.addRow(linha));
+      if (worksheet.columnCount !== colunas.length) {
+        throw new Error("O worksheet consolidado possui colunas além da estrutura da tabela.");
+      }
+      formatarWorksheet(worksheet);
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+    const arquivo = `SIAPS_TOOL_CONSOLIDADO_${nomeSeguro(agrupamento)}.xlsx`;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = arquivo;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    publicarMetrica({
+      tipo: "exportacao",
+      indicador: "CONSOLIDADO",
+      segundos: (Date.now() - inicio) / 1000
+    });
+    return arquivo;
+  }
 
   window.__SIAPS_TOOL_EXPORTAR_CONSOLIDACAO__ =
     async opcoes => {
@@ -2749,6 +2913,18 @@
         throw new Error(
           "Nenhum registro corresponde aos filtros selecionados."
         );
+      }
+
+      if (opcoes.unificacao?.modo === "unificado") {
+        const arquivo = await exportarExcelUnificado(
+          relatoriosExportaveis,
+          opcoes
+        );
+        publicarProgresso(
+          "✓ Planilha consolidada gerada com sucesso.",
+          "success"
+        );
+        return { arquivos: 1, arquivo };
       }
 
       for (

@@ -1,4 +1,4 @@
-# PENDÊNCIAS SIAPS TOOL ↓
+# PENDÊNCIAS SIAPS TOOL
 
 Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 
@@ -8,7 +8,7 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 - [x] Cache seguro de consolidações por aba SIAPS, sem persistir dados volumosos no storage.
 - [x] Estimativas de tempo de consolidação e exportação com histórico local de duração.
 - [x] Melhoria de UI/UX: caixas de seleção ampliadas e abertura em janela redimensionável.
-- [ ] Unificação opcional de arquivos/abas por competência, equipe, indicador ou unidade.
+- [x] Unificação opcional: um XLSX com guia sequencial ou guias por competência, unidade, equipe ou indicador.
 - [ ] Monitoramento seguro de sessão/autenticação.
 
 ## Features:
@@ -17,7 +17,6 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
   - Competência;
   - Equipe;
   - Indicador;
-  - Uni
     <br>
     Pode ser unificada em:
   - 1 guia com todas as informações em sequência;
@@ -52,7 +51,7 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 
 ### Requisitos Não Funcionais
 
-- Desempenho: 
+- Desempenho:
   - Consolidação em paralelo para otimizar o tempo (se possível e se não alterar resultados);
   - Permitir consolidação e download em segundo plano;
   - Taxa de Download reduzida para evitar erros;

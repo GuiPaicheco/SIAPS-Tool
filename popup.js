@@ -28,6 +28,8 @@ const ui = {
   competenciasSelecionadas: document.querySelector("#competenciasSelecionadas"),
   metadados: document.querySelector("#metadados"),
   modoDados: document.querySelector("#modoDados"),
+  modoUnificacao: document.querySelector("#modoUnificacao"),
+  agruparUnificacao: document.querySelector("#agruparUnificacao"),
  campoOrdenacao: document.querySelector("#ordenarCampo"),
   direcaoOrdenacao: document.querySelector("#ordenarDirecao"),
   consolidar: document.querySelector("#consolidar"),
@@ -274,9 +276,13 @@ function salvarConfiguracao() {
       indicadores: state.controllers.indicadores.getValues(),
       unidades: state.controllers.unidades.getValues(),
      equipes: state.controllers.equipes.getValues(),
-     incluirMetadados: ui.metadados.checked,
+      incluirMetadados: ui.metadados.checked,
       modoDados: ui.modoDados.value,
-     ordenacao: { campo: ui.campoOrdenacao.value, direcao: ui.direcaoOrdenacao.value }
+      unificacao: {
+        modo: ui.modoUnificacao.value,
+        agruparPor: ui.agruparUnificacao.value
+      },
+      ordenacao: { campo: ui.campoOrdenacao.value, direcao: ui.direcaoOrdenacao.value }
     }
   });
 }
@@ -450,9 +456,13 @@ function configuracaoMotor() {
     indicadores: state.controllers.indicadores.getValues(),
     unidades: state.controllers.unidades.getValues(),
    equipes: state.controllers.equipes.getValues(),
-   incluirMetadados: ui.metadados.checked,
+    incluirMetadados: ui.metadados.checked,
     modoDados: ui.modoDados.value,
-   ordenacao: { campo: ui.campoOrdenacao.value, direcao: ui.direcaoOrdenacao.value }
+    unificacao: {
+      modo: ui.modoUnificacao.value,
+      agruparPor: ui.agruparUnificacao.value
+    },
+    ordenacao: { campo: ui.campoOrdenacao.value, direcao: ui.direcaoOrdenacao.value }
   };
 }
 
@@ -519,9 +529,12 @@ async function iniciar() {
   ]);
   state.desempenho = desempenho;
   const configuracaoSalva = configDados[STORAGE_CONFIG] || {};
- ui.metadados.checked = configuracaoSalva.incluirMetadados !== false;
+  ui.metadados.checked = configuracaoSalva.incluirMetadados !== false;
   ui.modoDados.value = configuracaoSalva.modoDados === "analitico" ? "analitico" : "completo";
- ui.direcaoOrdenacao.value = configuracaoSalva.ordenacao?.direcao === "asc" ? "asc" : "desc";
+  ui.modoUnificacao.value = configuracaoSalva.unificacao?.modo === "unificado" ? "unificado" : "separado";
+  ui.agruparUnificacao.value = configuracaoSalva.unificacao?.agruparPor || "sequencia";
+  ui.agruparUnificacao.disabled = ui.modoUnificacao.value !== "unificado";
+  ui.direcaoOrdenacao.value = configuracaoSalva.ordenacao?.direcao === "asc" ? "asc" : "desc";
   preencherCamposOrdenacao([], configuracaoSalva.ordenacao?.campo);
   aplicarEstadoExecucao(execucao || { mensagens: [], status: "Pronto para gerar." });
   const tabIdDaConsulta = Number(
@@ -634,6 +647,15 @@ ui.cancelarDownloads.addEventListener("click", ocultarConfirmacaoDownloads);
 
 ui.metadados.addEventListener("change", salvarConfiguracao);
 ui.modoDados.addEventListener("change", () => { atualizarCamposOrdenacao(); salvarConfiguracao(); });
+ui.modoUnificacao.addEventListener("change", () => {
+  ui.agruparUnificacao.disabled = ui.modoUnificacao.value !== "unificado";
+  atualizarContagemExportacao();
+  salvarConfiguracao();
+});
+ui.agruparUnificacao.addEventListener("change", () => {
+  atualizarContagemExportacao();
+  salvarConfiguracao();
+});
 ui.campoOrdenacao.addEventListener("change", () => { atualizarContagemExportacao(); salvarConfiguracao(); });
 ui.direcaoOrdenacao.addEventListener("change", salvarConfiguracao);
 ui.adicionarCompetencia.addEventListener("click", adicionarCompetencia);

@@ -86,7 +86,20 @@
               <option value="analitico">Apenas dados analíticos</option>
             </select>
             <small class="option-help">Dados analíticos incluem as colunas fixas, pontuação e classificação.</small>
-           <label class="toggle-row" for="metadados">
+            <label for="modoUnificacao">Arquivos</label>
+            <select id="modoUnificacao">
+              <option value="separado">Separados por indicador e competência</option>
+              <option value="unificado">Um XLSX consolidado</option>
+            </select>
+            <label for="agruparUnificacao">Guias do consolidado</label>
+            <select id="agruparUnificacao" disabled>
+              <option value="sequencia">Uma guia com todos os dados</option>
+              <option value="competencia">Uma guia por competência</option>
+              <option value="unidade">Uma guia por unidade</option>
+              <option value="equipe">Uma guia por equipe</option>
+              <option value="indicador">Uma guia por indicador</option>
+            </select>
+            <label class="toggle-row" for="metadados">
               <input id="metadados" type="checkbox" checked>
               <span><strong>Incluir metadados institucionais</strong><small>Inclui cabeçalho, município, filtros e fonte.</small></span>
             </label>
