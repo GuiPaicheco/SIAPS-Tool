@@ -6,7 +6,7 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 
 - [x] Exportação em lote: downloads sequenciais com progresso por arquivo e intervalo controlado.
 - [x] Cache seguro de consolidações por aba SIAPS, sem persistir dados volumosos no storage.
-- [ ] Estimativas de tempo de consolidação e exportação.
+- [x] Estimativas de tempo de consolidação e exportação com histórico local de duração.
 - [ ] Melhoria de UI/UX e abertura em janela redimensionável.
 - [ ] Unificação opcional de arquivos/abas por competência, equipe, indicador ou unidade.
 - [ ] Monitoramento seguro de sessão/autenticação.

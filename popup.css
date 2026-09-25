@@ -649,6 +649,7 @@ footer span {
   color: var(--ink);
 }
 .consolidation-button { margin: 2px 0 14px; background: var(--blue-dark); }
+.time-estimate { margin: -7px 0 13px; color: var(--muted); font-size: 11px; text-align: center; }
 .phase-heading { display:flex; align-items:center; gap:9px; margin:17px 2px 10px; color:var(--blue-dark); text-transform:uppercase; font-size:12px; letter-spacing:.06em; }
 .phase-heading::after { content:""; height:1px; flex:1; background:var(--line); }
 .phase-heading span { padding:3px 7px; border-radius:12px; background:var(--blue-soft); color:var(--blue); font-size:10px; font-weight:700; }

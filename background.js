@@ -5,6 +5,9 @@ const CHAVE_EXECUCAO =
 const CHAVE_MULTI_CONSOLIDACAO =
   "siapsToolMultiConsolidacao";
 
+const CHAVE_DESEMPENHO =
+  "siapsToolPerformance";
+
 let filaEventos =
   Promise.resolve();
 
@@ -22,6 +25,44 @@ async function salvarExecucao(alteracoes) {
   const atualizada = { ...(await obterExecucao()), ...alteracoes };
   await chrome.storage.session.set({ [CHAVE_EXECUCAO]: atualizada });
   return atualizada;
+}
+
+async function obterDesempenho() {
+  const dados = await chrome.storage.local.get(CHAVE_DESEMPENHO);
+  return dados[CHAVE_DESEMPENHO] || {
+    consolidacao: { media: 0, amostras: 0, porIndicador: {} },
+    exportacao: { media: 0, amostras: 0, porIndicador: {} }
+  };
+}
+
+function atualizarMedia(atual = {}, segundos) {
+  const amostrasAnteriores = Math.min(atual.amostras || 0, 19);
+  return {
+    media: ((atual.media || 0) * amostrasAnteriores + segundos) /
+      (amostrasAnteriores + 1),
+    amostras: amostrasAnteriores + 1
+  };
+}
+
+async function registrarMetrica(metrica) {
+  const segundos = Number(metrica?.segundos);
+  if (
+    !["consolidacao", "exportacao"].includes(metrica?.tipo) ||
+    !Number.isFinite(segundos) ||
+    segundos <= 0
+  ) return;
+
+  const desempenho = await obterDesempenho();
+  const categoria = desempenho[metrica.tipo];
+  categoria.porIndicador ||= {};
+  categoria.porIndicador[metrica.indicador] = atualizarMedia(
+    categoria.porIndicador[metrica.indicador],
+    segundos
+  );
+  const media = atualizarMedia(categoria, segundos);
+  categoria.media = media.media;
+  categoria.amostras = media.amostras;
+  await chrome.storage.local.set({ [CHAVE_DESEMPENHO]: desempenho });
 }
 
 async function registrarMensagem(mensagem) {
@@ -77,6 +118,11 @@ async function consolidacaoDisponivelNaAba(tabId) {
 chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
   if (mensagem.type === "getExecution") {
     obterExecucao().then(responder);
+    return true;
+  }
+
+  if (mensagem.type === "getPerformance") {
+    obterDesempenho().then(responder);
     return true;
   }
 
@@ -256,6 +302,10 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
               await registrarMensagem(
                 mensagem
               );
+            }
+
+            if (mensagem.type === "metric") {
+              await registrarMetrica(mensagem.metrica);
             }
 
             if (mensagem.type === "consolidation") {

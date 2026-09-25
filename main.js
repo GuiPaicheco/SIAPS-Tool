@@ -1964,6 +1964,19 @@
 
   }
 
+  function publicarMetrica(
+    metrica
+  ) {
+    window.postMessage(
+      {
+        source: "SIAPS_TOOL",
+        type: "metric",
+        metrica
+      },
+      "*"
+    );
+  }
+
   function ordenarDadosPorColuna(
     dados,
     colunas,
@@ -2431,6 +2444,9 @@
     opcoes = {}
   ) {
 
+    const inicioExportacao =
+      Date.now();
+
     info(
       `      📗 Criando XLSX de ${indicador.codigo}...`
     );
@@ -2654,6 +2670,12 @@
         ),
       10000
     );
+
+    publicarMetrica({
+      tipo: "exportacao",
+      indicador: indicador.codigo,
+      segundos: (Date.now() - inicioExportacao) / 1000
+    });
 
     return arquivo;
 
@@ -3029,6 +3051,12 @@
       log(
         `✅ ${indicador.codigo} FINALIZADO em ${segundos}s`
       );
+
+      publicarMetrica({
+        tipo: "consolidacao",
+        indicador: indicador.codigo,
+        segundos: Number(segundos)
+      });
 
       if (
         arquivo

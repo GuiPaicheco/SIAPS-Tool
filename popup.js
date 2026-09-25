@@ -11,6 +11,7 @@ const state = {
   competencias: [],
   previaExportacao: null,
   exportacaoPendente: null,
+  desempenho: null,
   controllers: {}
 };
 
@@ -27,6 +28,7 @@ const ui = {
   direcaoOrdenacao: document.querySelector("#ordenarDirecao"),
   consolidar: document.querySelector("#consolidar"),
   baixar: document.querySelector("#baixar"),
+  consolidacaoEstimate: document.querySelector("#consolidationEstimate"),
   downloadConfirmation: document.querySelector("#downloadConfirmation"),
   downloadConfirmationText: document.querySelector("#downloadConfirmationText"),
   confirmarDownloads: document.querySelector("#confirmarDownloads"),
@@ -84,6 +86,44 @@ function atualizarCompetenciasSelecionadas() {
   ui.competenciaHelp.textContent = competencias.length
     ? `${competencias.length} competência(s) selecionada(s): ${competencias.join(", ")}`
     : "Adicione ao menos uma competência.";
+  atualizarEstimativaConsolidacao();
+}
+
+function formatarDuracao(segundos) {
+  const total = Math.max(1, Math.round(segundos));
+  const minutos = Math.floor(total / 60);
+  const restante = total % 60;
+  return minutos ? `cerca de ${minutos} min${restante ? ` e ${restante}s` : ""}` : `cerca de ${restante}s`;
+}
+
+function estimarSegundos(tipo, quantidade, indicadores = []) {
+  const dados = state.desempenho?.[tipo];
+  if (!dados?.amostras) return null;
+  if (indicadores.length) {
+    return indicadores.reduce(
+      (total, indicador) => total + (
+        dados.porIndicador?.[indicador]?.media || dados.media
+      ),
+      0
+    ) * quantidade;
+  }
+  return dados.media * quantidade;
+}
+
+function atualizarEstimativaConsolidacao() {
+  if (!ui.consolidacaoEstimate) return;
+  const indicadores = state.controllers.indicadores?.getValues() || [];
+  const codigos = indicadores.length
+    ? indicadores
+    : state.catalogo?.indicadores.map(indicador => indicador.codigo) || [];
+  const segundos = estimarSegundos(
+    "consolidacao",
+    state.competencias.length,
+    codigos
+  );
+  ui.consolidacaoEstimate.textContent = segundos
+    ? `Previsão de consolidação: ${formatarDuracao(segundos)} (baseada no histórico local).`
+    : "A previsão aparecerá após a primeira consolidação desta extensão.";
 }
 
 function adicionarCompetencia() {
@@ -343,7 +383,8 @@ function atualizarContagemExportacao() {
       return;
     }
     state.previaExportacao = resposta;
-    ui.selectionCount.textContent = `${resposta.registros} de ${total} registros serão exportados em ${resposta.arquivos} arquivo(s), sem nova consulta.`;
+    const tempo = estimarSegundos("exportacao", resposta.arquivos);
+    ui.selectionCount.textContent = `${resposta.registros} de ${total} registros serão exportados em ${resposta.arquivos} arquivo(s), sem nova consulta.${tempo ? ` Previsão: ${formatarDuracao(tempo)}.` : ""}`;
   });
   atualizarFaseExportacao();
 }
@@ -438,7 +479,7 @@ function configurarControles(configuracaoSalva) {
   ])).entries()].map(([valor, rotulo]) => ({ valor, rotulo }));
   state.controllers.indicadores = new MultiSelect(document.querySelector("#indicatorSelect"), {
     nome: "indicador", todos: "Todos os indicadores", indisponivel: "Carregando indicadores...",
-    grupos: gruposIndicadores, pesquisar: item => `${item.rotulo} ${item.detalhe || ""}`, onChange: () => { invalidarConsolidacao(); salvarConfiguracao(); }
+    grupos: gruposIndicadores, pesquisar: item => `${item.rotulo} ${item.detalhe || ""}`, onChange: () => { invalidarConsolidacao(); atualizarEstimativaConsolidacao(); salvarConfiguracao(); }
   });
   state.controllers.unidades = new MultiSelect(document.querySelector("#unitSelect"), {
     nome: "unidade", todos: "Todas as unidades", indisponivel: "Disponível após carregar dados do SIAPS.",
@@ -465,11 +506,13 @@ function preencherOpcoes(opcoes, configuracaoSalva = {}) {
 }
 
 async function iniciar() {
-  const [configDados, execucao, opcoesDados] = await Promise.all([
+  const [configDados, execucao, opcoesDados, desempenho] = await Promise.all([
     chrome.storage.local.get(STORAGE_CONFIG),
     new Promise(resolve => chrome.runtime.sendMessage({ type: "getExecution" }, resolve)),
-    chrome.storage.session.get("siapsToolOptions")
+    chrome.storage.session.get("siapsToolOptions"),
+    new Promise(resolve => chrome.runtime.sendMessage({ type: "getPerformance" }, resolve))
   ]);
+  state.desempenho = desempenho;
   const configuracaoSalva = configDados[STORAGE_CONFIG] || {};
  ui.metadados.checked = configuracaoSalva.incluirMetadados !== false;
   ui.modoDados.value = configuracaoSalva.modoDados === "analitico" ? "analitico" : "completo";
@@ -492,6 +535,7 @@ async function iniciar() {
     state.competencias = [...new Set(configuracaoSalva.competencias?.length ? configuracaoSalva.competencias : [competencia])];
     atualizarCompetenciasSelecionadas();
     configurarControles(configuracaoSalva);
+    atualizarEstimativaConsolidacao();
     preencherOpcoes(opcoesDados.siapsToolOptions, configuracaoSalva);
     atualizarCamposOrdenacao();
     const pertenceAbaAtual = !state.consolidacao?.tabId || (
