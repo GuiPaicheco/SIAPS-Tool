@@ -22,6 +22,14 @@ body {
   margin: 0;
   background: var(--surface);
 }
+.dashboard {
+  width: 100%;
+  min-width: 600px;
+}
+.dashboard .app-shell {
+  max-width: 980px;
+  margin: 0 auto;
+}
 button,
 select,
 input {
@@ -88,6 +96,19 @@ button {
 }
 form {
   margin-top: 14px;
+}
+.open-window-button {
+  display: block;
+  margin: 10px 0 -4px auto;
+  border: 0;
+  background: transparent;
+  color: var(--blue-dark);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.dashboard .open-window-button {
+  display: none;
 }
 .selection-card,
 .option-card,
@@ -548,7 +569,8 @@ select:disabled,
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 9px 11px;
+  min-height: 44px;
+  padding: 10px 12px;
   cursor: pointer;
   font-size: 12px;
   line-height: 1.3;
@@ -560,8 +582,11 @@ select:disabled,
   border-top: 1px solid #eef2f5;
 }
 .multi-option input {
-  margin: 1px 0 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
   accent-color: var(--blue);
+  flex: 0 0 auto;
 }
 .multi-option strong,
 .multi-option small {

@@ -126,6 +126,18 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
     return true;
   }
 
+  if (mensagem.type === "openDashboard") {
+    chrome.windows.create({
+      url: `${chrome.runtime.getURL("popup.html")}?tabId=${mensagem.tabId}`,
+      type: "popup",
+      width: 860,
+      height: 900
+    })
+      .then(janela => responder({ criada: true, windowId: janela.id }))
+      .catch(erro => responder({ erro: erro.message }));
+    return true;
+  }
+
   if (mensagem.type === "clearExecutionLog") {
     salvarExecucao({ mensagens: [] }).then(responder);
     return true;

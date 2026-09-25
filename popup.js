@@ -1,6 +1,10 @@
 // Desenvolvido por Guilherme Paicheco (guilherme.paicheco@betim.mg.gov.br)
 const STORAGE_CONFIG = "siapsToolPopupConfig";
 
+if (new URLSearchParams(window.location.search).has("tabId")) {
+  document.body.classList.add("dashboard");
+}
+
 const state = {
   tabId: null,
   tabUrl: null,
@@ -43,6 +47,7 @@ const ui = {
   progressText: document.querySelector("#progressText"),
   log: document.querySelector("#executionLog"),
   limparLog: document.querySelector("#limparLog"),
+  openWindow: document.querySelector("#openWindow"),
   errors: {
     competencia: document.querySelector("#competenciaError"),
     indicadores: document.querySelector("#indicadoresError"),
@@ -519,7 +524,12 @@ async function iniciar() {
  ui.direcaoOrdenacao.value = configuracaoSalva.ordenacao?.direcao === "asc" ? "asc" : "desc";
   preencherCamposOrdenacao([], configuracaoSalva.ordenacao?.campo);
   aplicarEstadoExecucao(execucao || { mensagens: [], status: "Pronto para gerar." });
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tabIdDaConsulta = Number(
+    new URLSearchParams(window.location.search).get("tabId")
+  );
+  const [tab] = tabIdDaConsulta
+    ? [await chrome.tabs.get(tabIdDaConsulta).catch(() => null)]
+    : await chrome.tabs.query({ active: true, currentWindow: true });
   state.tabId = tab?.id;
   state.tabUrl = tab?.url || null;
   if (!state.tabId || !/^https:\/\/.*\.saude\.gov\.br\//.test(tab.url || "")) {
@@ -638,6 +648,9 @@ ui.competenciasSelecionadas.addEventListener("click", event => {
 ui.competenciaMes.addEventListener("change", () => { ui.errors.competencia.textContent = ""; });
 ui.competenciaAno.addEventListener("change", () => { ui.errors.competencia.textContent = ""; });
 ui.limparLog.addEventListener("click", () => chrome.runtime.sendMessage({ type: "clearExecutionLog" }, resposta => renderLog(resposta.mensagens || [])));
+ui.openWindow.addEventListener("click", () => {
+  chrome.runtime.sendMessage({ type: "openDashboard", tabId: state.tabId });
+});
 
 document.addEventListener("click", event => Object.values(state.controllers).forEach(controlador => {
   if (controlador.container && !controlador.container.contains(event.target)) controlador.toggle(false);
