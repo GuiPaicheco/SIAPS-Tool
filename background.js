@@ -238,6 +238,7 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
             window.__SIAPS_TOOL_OPCOES__ = null;
           }
         });
+        await chrome.storage.session.remove("siapsToolOptions");
         return executarNoSiaps(mensagem.tabId, configuracao);
       })
       .then(resultado => responder({
@@ -430,6 +431,7 @@ async function invalidarEstadoDaAba(tabId) {
   }
 
   if (execucao.consolidacao?.tabId === tabId || multi?.tabId === tabId) {
+    await chrome.storage.session.remove("siapsToolOptions");
     await salvarExecucao({
       emExecucao: false,
       consolidacao: null,

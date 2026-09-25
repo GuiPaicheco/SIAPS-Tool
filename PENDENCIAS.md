@@ -8,6 +8,7 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 - [x] Cache seguro de consolidações por aba SIAPS, sem persistir dados volumosos no storage.
 - [x] Estimativas de tempo de consolidação e exportação com histórico local de duração.
 - [x] Melhoria de UI/UX: caixas de seleção ampliadas e abertura em janela redimensionável.
+- [x] Retorno à página: dados dependentes da consolidação são limpos quando a aba SIAPS é invalidada.
 - [x] Unificação opcional: um XLSX com guia sequencial ou guias por competência, unidade, equipe ou indicador.
 - [ ] Monitoramento seguro de sessão/autenticação.
 

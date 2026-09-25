@@ -559,7 +559,12 @@ async function iniciar() {
     atualizarCompetenciasSelecionadas();
     configurarControles(configuracaoSalva);
     atualizarEstimativaConsolidacao();
-    preencherOpcoes(opcoesDados.siapsToolOptions, configuracaoSalva);
+    preencherOpcoes(
+      state.consolidacao
+        ? opcoesDados.siapsToolOptions
+        : { unidades: [], equipes: [] },
+      configuracaoSalva
+    );
     atualizarCamposOrdenacao();
     const pertenceAbaAtual = !state.consolidacao?.tabId || (
       state.consolidacao.tabId === state.tabId &&
