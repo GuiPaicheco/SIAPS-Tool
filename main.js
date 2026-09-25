@@ -3169,21 +3169,41 @@
       relatorios: todosRelatorios
     };
 
+    const resumoConsolidacao = {
+        competencia: COMPETENCIA,
+      competencias: competenciasConsolidadas.map(item => item.competencia),
+      indicadores: todosRelatorios.length,
+      indicadoresCodigos: indicadoresSelecionados.map(indicador => indicador.codigo),
+      camposOrdenacao: camposOrdenacaoComuns || [...camposOrdenacao],
+      camposOrdenacaoAnaliticos,
+      campoPadraoOrdenacao,
+      unidades: window.__SIAPS_TOOL_OPCOES__?.unidades.length || 0,
+      equipes: window.__SIAPS_TOOL_OPCOES__?.equipes.length || 0,
+      registros
+    };
+
+    if (
+      configuracaoInterface.chaveConsolidacao &&
+      configuracaoInterface.competenciaAtual ===
+        configuracaoInterface.competenciasTotal
+    ) {
+      window.__SIAPS_TOOL_CACHE_CONSOLIDACOES__ ||= {};
+      window.__SIAPS_TOOL_CACHE_CONSOLIDACOES__[
+        configuracaoInterface.chaveConsolidacao
+      ] = {
+        consolidacao: window.__SIAPS_TOOL_CONSOLIDACAO__,
+        resumo: resumoConsolidacao,
+        opcoes: window.__SIAPS_TOOL_OPCOES__ || {
+          unidades: [],
+          equipes: []
+        }
+      };
+    }
+
     window.postMessage({
       source: "SIAPS_TOOL",
       type: "consolidation",
-      resumo: {
-       competencia: COMPETENCIA,
-        competencias: competenciasConsolidadas.map(item => item.competencia),
-        indicadores: todosRelatorios.length,
-       indicadoresCodigos: indicadoresSelecionados.map(indicador => indicador.codigo),
-        camposOrdenacao: camposOrdenacaoComuns || [...camposOrdenacao],
-        camposOrdenacaoAnaliticos,
-       campoPadraoOrdenacao,
-        unidades: window.__SIAPS_TOOL_OPCOES__?.unidades.length || 0,
-        equipes: window.__SIAPS_TOOL_OPCOES__?.equipes.length || 0,
-        registros
-      }
+      resumo: resumoConsolidacao
     }, "*");
 
     publicarProgresso(

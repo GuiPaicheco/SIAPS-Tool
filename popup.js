@@ -395,6 +395,12 @@ function configuracaoMotor() {
   return {
     competencia: competenciaAtual(),
     competencias: competenciasSelecionadas(),
+    chaveConsolidacao: JSON.stringify({
+      competencias: competenciasSelecionadas().slice().sort(),
+      indicadores: (state.controllers.indicadores.getValues().length
+        ? state.controllers.indicadores.getValues().slice().sort()
+        : ["todos"])
+    }),
     indicadores: state.controllers.indicadores.getValues(),
     unidades: state.controllers.unidades.getValues(),
    equipes: state.controllers.equipes.getValues(),
@@ -517,7 +523,11 @@ ui.consolidar.addEventListener("click", () => {
       definirStatus(mensagemAmigavel(resposta?.erro || chrome.runtime.lastError?.message), "error");
       chrome.runtime.sendMessage({ type: "getExecution" }, aplicarEstadoExecucao);
     }
-    else aplicarEstadoExecucao({ emExecucao: true, mensagens: [], status: "Consultando SIAPS e gerando consolidação...", nivel: "info" });
+    else if (resposta.restaurada) {
+      chrome.runtime.sendMessage({ type: "getExecution" }, aplicarEstadoExecucao);
+    } else {
+      aplicarEstadoExecucao({ emExecucao: true, mensagens: [], status: "Consultando SIAPS e gerando consolidação...", nivel: "info" });
+    }
   });
 });
 

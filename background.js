@@ -117,6 +117,36 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
       nivel: "info"
     })
       .then(async () => {
+        const cache = await chrome.scripting.executeScript({
+          target: { tabId: mensagem.tabId },
+          world: "MAIN",
+          func: chave => {
+            const item = window.__SIAPS_TOOL_CACHE_CONSOLIDACOES__?.[chave];
+            if (!item) return null;
+            window.__SIAPS_TOOL_CONSOLIDACAO__ = item.consolidacao;
+            return { resumo: item.resumo, opcoes: item.opcoes };
+          },
+          args: [mensagem.configuracao.chaveConsolidacao]
+        });
+        const cacheEmMemoria = cache[0]?.result;
+        const resumoEmCache = cacheEmMemoria?.resumo;
+        if (resumoEmCache) {
+          await chrome.storage.session.set({
+            siapsToolOptions: cacheEmMemoria.opcoes || { unidades: [], equipes: [] }
+          });
+          await salvarExecucao({
+            emExecucao: false,
+            consolidacao: {
+              ...resumoEmCache,
+              tabId: mensagem.tabId,
+              pageUrl: mensagem.pageUrl || null
+            },
+            status: "Consolidação recuperada da memória desta aba SIAPS.",
+            nivel: "success"
+          });
+          return { restaurada: true };
+        }
+
         const competencias = [...new Set(
           mensagem.configuracao.competencias?.length
             ? mensagem.configuracao.competencias
@@ -125,7 +155,9 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
         const [primeira, ...restantes] = competencias;
         const configuracao = {
           ...mensagem.configuracao,
-          competencia: primeira
+          competencia: primeira,
+          competenciaAtual: 1,
+          competenciasTotal: competencias.length
         };
         await chrome.storage.session.set({
           [CHAVE_MULTI_CONSOLIDACAO]: {
@@ -150,7 +182,10 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
         });
         return executarNoSiaps(mensagem.tabId, configuracao);
       })
-      .then(() => responder({ iniciado: true }))
+      .then(resultado => responder({
+        iniciado: true,
+        restaurada: Boolean(resultado?.restaurada)
+      }))
       .catch(async erro => {
         await salvarExecucao({
           emExecucao: false,
@@ -240,7 +275,9 @@ chrome.runtime.onMessage.addListener((mensagem, sender, responder) => {
                   multi.restantes;
                 const configuracao = {
                   ...multi.configuracao,
-                  competencia: proxima
+                  competencia: proxima,
+                  competenciaAtual: multi.total - restantes.length,
+                  competenciasTotal: multi.total
                 };
                 await chrome.storage.session.set({
                   [CHAVE_MULTI_CONSOLIDACAO]: {
