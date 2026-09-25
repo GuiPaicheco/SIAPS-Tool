@@ -2699,8 +2699,8 @@
 
       }
 
-     const arquivos =
-       [];
+      const arquivos =
+        [];
 
       const relatorios =
         consolidacao.competencias
@@ -2710,24 +2710,37 @@
             )
           : consolidacao.relatorios;
 
-     for (
-       const relatorio
-        of relatorios
+      const relatoriosExportaveis =
+        relatorios.map(
+          relatorio => ({
+            relatorio,
+            equipes: filtrarEquipes(
+              relatorio.equipes,
+              opcoes
+            )
+          })
+        ).filter(
+          item => item.equipes.length
+        );
+
+      if (!relatoriosExportaveis.length) {
+        throw new Error(
+          "Nenhum registro corresponde aos filtros selecionados."
+        );
+      }
+
+      for (
+        let indice = 0;
+        indice < relatoriosExportaveis.length;
+        indice++
       ) {
+        const { relatorio, equipes } =
+          relatoriosExportaveis[indice];
 
-       const equipes =
-         filtrarEquipes(
-           relatorio.equipes,
-            opcoes
-         );
-
-        if (
-          !equipes.length
-        ) {
-
-          continue;
-
-        }
+        publicarProgresso(
+          `Gerando arquivo ${indice + 1} de ${relatoriosExportaveis.length}: ${codigoExibicaoIndicador(relatorio.indicador)}.`,
+          "info"
+        );
 
         arquivos.push(
           await exportarExcel(
@@ -2744,15 +2757,11 @@
          )
         );
 
-      }
-
-      if (
-        !arquivos.length
-      ) {
-
-        throw new Error(
-          "Nenhum registro corresponde aos filtros selecionados."
-        );
+        if (indice < relatoriosExportaveis.length - 1) {
+          await new Promise(
+            resolve => setTimeout(resolve, ESPERA_DOWNLOAD)
+          );
+        }
 
       }
 
