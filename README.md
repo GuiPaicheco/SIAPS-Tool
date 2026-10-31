@@ -72,3 +72,13 @@ Os metadados referem se aos dados de confirmação da planilha, que trazem dados
 
 Em casos de dúvidas ou sugestões, envie um e-mail para guilherme.paicheco@betim.mg.gov.br! 
 <br> Um bom trabalho a todos!
+
+---
+
+## Guia rápido do repositório
+
+Extensão Chrome para consolidar indicadores do SIAPS por competência, filtrar equipes e exportar planilhas XLSX.
+
+**Contexto:** Ferramenta interna.
+
+Consulte os requisitos e as limitações nas seções acima antes de usar o sistema. Esta atualização revisa a documentação; não representa uma nova validação de execução ou de segurança.
