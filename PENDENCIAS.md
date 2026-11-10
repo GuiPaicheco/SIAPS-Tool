@@ -1,58 +1,22 @@
-# PENDÊNCIAS SIAPS TOOL
+# Próximas validações e evoluções
 
-Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
+## Antes de distribuir amplamente
 
-## Andamento
+- [ ] Homologar em sessão institucional real, comparando contagem, variáveis, numerador/denominador, score e classificação com o SIAPS para cada um dos 31 indicadores, incluindo C7, M2 e A4. Fixtures atuais são sintéticas.
+- [ ] Confirmar com o ambiente real os contratos de tipos, metadata e paginação. Não usar o campo `total` como prova de quantidade de equipes sem confirmar sua semântica.
+- [ ] Validar com profissionais da DAPS o vocabulário, a seleção do mês e a emissão sem ajuda técnica.
+- [ ] Testar sessão real expirada/renovada, permissões institucionais e destino de download em Chrome gerenciado.
+- [ ] Testar leitor de tela e zoom de 200% com usuários/ambiente de acessibilidade.
 
-- [x] Exportação em lote: downloads sequenciais com progresso por arquivo e intervalo controlado.
-- [x] Cache seguro de consolidações por aba SIAPS, sem persistir dados volumosos no storage.
-- [x] Estimativas de tempo de consolidação e exportação com histórico local de duração.
-- [x] Melhoria de UI/UX: caixas de seleção ampliadas e abertura em janela redimensionável.
-- [x] Retorno à página: dados dependentes da consolidação são limpos quando a aba SIAPS é invalidada.
-- [x] Unificação opcional: um XLSX com guia sequencial ou guias por competência, unidade, equipe ou indicador.
-- [ ] Monitoramento seguro de sessão/autenticação.
+## Melhorias futuras com medição
 
-## Features:
+- [ ] Medir lotes pequeno/médio/grande reais: rede, quantidade de chamadas, tempo XLSX e pico de memória. Não há benchmark real de ganho percentual nesta versão.
+- [ ] Estimativas de duração por fase, indicador e quantidade de linhas; nesta versão o histórico de duração total é registrado, mas não há promessa de ETA na interface.
+- [ ] Avaliar worker para serialização XLSX e divisão automática de lotes grandes; cancelamento durante `writeBuffer` só é observado quando essa serialização termina.
+- [ ] Avaliar ZIP único para múltiplos arquivos. Hoje há XLSX único opcional e fila de downloads confirmados.
+- [ ] Retomar só arquivos que faltaram em uma exportação interrompida. Hoje a coleta é retomada por cache, mas repetir exportação pode baixar novamente os arquivos anteriores.
+- [ ] Favoritos de relatórios e seleção de intervalo contínuo de meses, após validar a demanda.
+- [ ] Distribuição institucional gerenciada e atualização simplificada conforme as políticas locais.
+- [ ] Renovação oficial da autenticação somente se houver mecanismo autorizado/documentado. Não simular atividade para contornar expiração.
 
-- **Planilhas devem podem (de forma opcional) ser Unificadas em:**
-  - Competência;
-  - Equipe;
-  - Indicador;
-    <br>
-    Pode ser unificada em:
-  - 1 guia com todas as informações em sequência;
-    Por exemplo: coluna de indicador: "eSB1 - 1ª Consulta Odontológica", "eSB1 - 1ª Consulta Odontológica", (todas as equipes)..., "eSB2 - Tratamento Odontológico Concluído", "eSB2 - Tratamento Odontológico Concluído", (todas as equipes)..., até a última equipe "eSB6 - Tratamento Restaurador Atraumático".
-  - várias guias com os nomes da fonte que quiser unificar (unidades, equipes, indicadores, competência, ...);
-    Por exemplo: guias (por indicador) -> "eSB1, eSB2, eSB3, eSB4, eSB5, eSB6".
-- Entregar uma **previsão de tempo** para a consolidação e download de cada relatório. Pode ser com base na taxa de cada relatório;
-
-## Correção (problema com hipótese e possível solução):
-
-**Problema:** Ao realizar o download/consolidação em grandes volumes (mesmo 10 ou mais) de download, parece que algumas das últimas planilhas não baixam. <br>
-**Hipótese:** Não sei. Acredito que o problema aconteça realmente na hora do download. Visto que a consolidação acontece e foi percebido que todas as planilhas baixam de "imediato".<br>
-**Solução:** Talvez se reduzir o tempo no download de cada uma se esse for realmente o erro?<br>
-
-**Problema:** Ao realizar a consolidação da planilha de tal mês. Depois a consolidação de outra planilha sucessitivamente. Caso queiramos consolidar novamente a planilha anterior, devemos aguardar novamente todo aquele tempo que já aguardamos novamente.<br>
-**Hipótese:** Podemos realizar salvar a consolidação **de forma segura e sem alteração** na planilha.<br>
-**Solução:** Salvar em mock, localstorage ou o que for para que não haja tanta perca de tempo.<br>
-
-**Problema:** Após certo tempo realizando a cconsolidação, caso não haja interação no site ele perde a autenticação. <br>
-**Hipótese:** Podemos simular interação ou enviar a mesma mensagem que uma interação envia?<br>
-**Solução:** Manter login ativo.<br>
-
-**Problema:** Possuímos alguns problemas com a UI/UX do pop-up. Como por exemplo, caixas de seleção difíceis de marcar, pop-up muito pequeno.<br>
-**Hipótese:** Melhorar Ui/UX. <br>
-**Solução:** Permitir a reposição do pop-up. Permitir alteração no tamanho da janela do pop-up. <br>
-
-**Problema:** Ao sair e voltar da página (sem fechar), as seleções tentam se manter mas bugam. <br>
-**Hipótese:** A memória da aba do pop-up é falha.<br>
-**Solução:** Melhorar a memória de permanência em segundo plano. Ou lembra da última coisa que foi feita, ou reseta as opções mas matêm funcionando normalmente.<br>
-
-## Melhorias:
-
-### Requisitos Não Funcionais
-
-- Desempenho:
-  - Consolidação em paralelo para otimizar o tempo (se possível e se não alterar resultados);
-  - Permitir consolidação e download em segundo plano;
-  - Taxa de Download reduzida para evitar erros;
+As melhorias descritas no changelog foram implementadas. Os itens acima são validações ou evoluções que dependem de acesso institucional, evidência de desempenho ou decisões de produto.

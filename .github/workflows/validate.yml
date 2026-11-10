@@ -1,0 +1,37 @@
+name: Validar extensão e pacote
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vendor
+      - run: pnpm check
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm test:browser --package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SIAPS-Tool
+          path: |
+            dist/SIAPS-TOOL-1.1.0.zip
+            dist/SIAPS-TOOL-1.1.0.zip.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidencias-navegador
+          path: test-results/

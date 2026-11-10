@@ -1,84 +1,86 @@
-# **SIAPS-TOOL**
+# SIAPS Tool · DAPS Betim/MG
 
-Extensão para Google Chrome. Ferramenta interna da **_Diretoria de Atenção Primária á Saúde - Betim/MG_** para facilitar a consolidação das planilhas no **_SIAPS_**.
+Extensão Chrome para consultar indicadores do SIAPS, selecionar unidades/equipes e baixar relatórios Excel. **Versão 1.1.0 · Chrome 120 ou superior.** Município: Betim, IBGE 310670.
 
-## Tutorial para Instalação e Uso da Ferramenta
+## Instalar ou atualizar
 
-### Instalação:
+1. Baixe [SIAPS-TOOL-1.1.0.zip](dist/SIAPS-TOOL-1.1.0.zip) e extraia em uma pasta que não será apagada.
+2. No Chrome, abra `chrome://extensions` e ative **Modo do desenvolvedor**.
+3. Para instalar, use **Carregar sem compactação** e escolha a pasta extraída. Para atualizar uma instalação existente, substitua os arquivos na pasta original e clique no botão de recarregar da extensão.
+4. Fixe a extensão na barra do Chrome. A permissão **downloads**, nova nesta versão, permite iniciar e acompanhar a conclusão dos arquivos.
 
-1. Faça o **download** da ferramenta em ".zip":
+Use o pacote 1.1.0. O pacote antigo 1.0.0 não corresponde aos recursos atuais. A instalação por modo desenvolvedor depende das permissões/políticas do computador institucional.
 
-`Baixe por aqui`:
-![Instalação do .ZIP](./assets/tutorial/tutorial01.png)
+## Emitir um relatório
 
-ou
+1. **Entre no SIAPS** e abra a Visão por Competência. Clique no ícone da ferramenta. Se preferir, use **Abrir em janela maior**.
+2. **Escolha o que consultar:** confira o mês sugerido, adicione/remova meses e escolha os indicadores. “Nenhum” realmente deixa a seleção vazia.
+3. **Consulte os dados:** clique em **Consultar dados do SIAPS**. A janela pode ser fechada durante a consulta, mas mantenha a aba do SIAPS aberta e sem recarregar.
+4. **Confira e baixe:** selecione unidades/equipes, escolha a organização do Excel e abra **Ver exemplo da planilha**. A contagem mostra exatamente os registros dos filtros.
+5. Clique em **Baixar Excel** e aguarde a confirmação. Arquivos seguem as configurações de download do Chrome. Se houver vários, cada download é acompanhado antes do próximo.
 
-`Link pelo Drive`: (**PRECISA** estar logado no **e-mail INSTITUCIONAL**): https://drive.google.com/file/d/1Fe0-hM-1GPzs0F2tb5_yxi7ViiGQ9MWB/view?usp=sharing
+Um registro representa uma equipe em um indicador e mês. A mesma equipe pode aparecer várias vezes no conjunto, portanto o número de registros é diferente da quantidade de equipes.
 
-2. Faça a extração do arquivo (mantenha-o em algum lugar seguro para não apagar):
+### Escolher o formato
 
-![Extração do .ZIP](./assets/tutorial/tutorial02.png)
+- **Detalhado:** identificação, variáveis, numerador/denominador quando aplicável, pontuação e classificação.
+- **Resumo:** identificação, pontuação e classificação.
+- **Um arquivo Excel:** abas por mês, indicador, unidade ou equipe; também é possível colocar tudo em uma única aba.
+- **Arquivos separados:** um Excel por indicador e mês, com confirmação prévia do lote.
+- **Cabeçalho e informações:** inclui origem, situação e filtros. Mesmo sem o cabeçalho, relatórios parciais têm uma aba de pendências e nome identificado.
 
-3. Abra "[chrome://extensions](chrome://extensions)" no Google Chrome.
-4. Ative o **Modo do desenvolvedor**.
-5. Clique em **Carregar sem compactação** e selecione a pasta que foi extraída.
+### Se algo der errado
 
-![Importação da extensão](./assets/tutorial/tutorial03.png)
-![Confirmar importação](./assets/tutorial/tutorial04.png)
+- **Algumas consultas falharam:** veja a lista e use **Continuar / tentar pendências**. Consultas concluídas dentro da validade do cache são reaproveitadas.
+- **Precisa de um arquivo parcial:** confira a lista e marque a confirmação. O arquivo é identificado como **PARCIAL** e contém uma aba **Pendências**.
+- **Sessão encerrada:** entre novamente no SIAPS e tente as pendências. A ferramenta não simula cliques nem impede a expiração da sessão institucional.
+- **Quer interromper:** clique em **Parar operação**. Trabalhos concluídos continuam no cache temporário da aba.
+- **Dados podem ter mudado:** use **Atualizar dados**, que ignora o cache para os relatórios escolhidos.
+- **Chrome interrompeu um download:** confira `chrome://downloads` e a mensagem da ferramenta. Se repetir a exportação, arquivos já concluídos podem ser baixados outra vez.
+- **Precisa de suporte:** em **Detalhes técnicos e diagnóstico**, use **Copiar diagnóstico**. A ferramenta não inclui token nem linhas dos relatórios nesse diagnóstico.
 
-**EXTENSÃO IMPORTADA!**
+## Limites e cuidado com os dados
 
----
+- Até **36 meses** por consulta; para muitos indicadores, prefira intervalos menores.
+- Cache incremental válido por **15 minutos**, com no máximo **128 relatórios / cerca de 30 MiB** de dados JSON estimados. Consulta atual limitada a cerca de **50 MiB** de dados JSON estimados; a memória total do navegador/XLSX pode ser maior.
+- Dados volumosos ficam somente na memória do contexto isolado da extensão, na aba. Não são gravados em storage. Resumos, preferências, histórico recente e medidas de tempo são mantidos separadamente.
+- Recarregar/fechar a aba perde a consulta. Alterações normais de rota sem novo documento não devem apagá-la. Cada aba tem sua execução independente.
+- Mudança de conta/sessão impede exportar os dados do contexto anterior. Token JWT expirado é recusado; para tokens opacos, a validade depende da resposta do servidor.
+- A extensão não envia dados a serviços de terceiros; usa o SIAPS e downloads locais. A permissão da página é limitada a `https://siaps.saude.gov.br/*`.
+- Alterações no contrato da API são tratadas como erros identificáveis. Os IDs dos 31 indicadores permanecem os do catálogo original e precisam ser conferidos quando o SIAPS mudar.
+- Os fallbacks de M2/eMulti e A4/eAPP aplicam-se somente ao HTTP 500 conhecido do endpoint de tipos; autenticação não é contornada.
 
-### Uso:
+## Desenvolvimento
 
-1. **Fixe** a estensão para acesso facilitado.
+Requer Node.js 22+ e pnpm. ExcelJS é uma dependência local, sem acesso aos módulos internos webpack do SIAPS.
 
-![Fixar Extensão](./assets/tutorial/tutorial05.png)
+```powershell
+pnpm install --frozen-lockfile
+pnpm vendor
+pnpm check
+pnpm test
+pnpm exec playwright install chromium
+pnpm test:browser
+pnpm build
+```
 
-2. **Faça o login** no SIAPS e acesse a **Visão por Competência**.
-3. **Clique** no ícone da extensão.
-4. **Adicione cada um** dos períodos de **competência** que desejar.
-5. **Selecione** todos os **indicadores** desejados daquela competência.
+O teste de navegador carrega a extensão real em perfil separado do Chromium e intercepta todas as páginas/API do SIAPS com respostas sintéticas. Não usa credenciais reais. XLSX gerados são reabertos e conferidos. Os artefatos ficam em `test-results/`, ignorado pelo Git. Em rede corporativa com certificado confiável do Windows, Node 24 pode precisar de `NODE_USE_SYSTEM_CA=1`; não desative a validação TLS.
 
-![Seleção Principal](./assets/tutorial/tutorial06.png)
+`pnpm build` cria o ZIP da versão do manifesto e seu SHA-256. Antes de salvar, descompacta em memória e compara cada arquivo com os fontes. O workflow executa testes e publica o pacote como artefato; publicar uma release ou mesclar uma PR continua sendo uma ação separada.
 
-3. Clique em **Gerar consolidações**. Essa etapa consulta o SIAPS e mantém os resultados em memória na própria aba do SIAPS, ela ainda não baixa os arquivos.
-4. Após a consolidação, **filtre unidades e equipes** que desejar, defina o modo de dados, **cabeçalho** e **ordenação**.
+### Estrutura
 
-![Filtros](./assets/tutorial/tutorial07.png)
+| Arquivo | Responsabilidade |
+|---|---|
+| `catalog.js` | Os 31 indicadores originais |
+| `core.js` | Seleções, contratos, esquemas, agrupamento e ordenação |
+| `background.js` | Estado/jobs por aba, mensagens, acesso pontual ao token e downloads |
+| `main.js` | Coleta, timeout/retry, cache, cancelamento e preparação da exportação em contexto isolado |
+| `excel.js` | Estrutura e apresentação dos arquivos Excel |
+| `popup.*` | Interface e prévia |
+| `vendor/` | ExcelJS 4.4.0 e licença |
+| `tests/` | Regressões, XLSX e fluxo no navegador |
 
-5. Clique em **Baixar planilha**. A exportação reutiliza a consolidação existente, sem nova consulta à API.
+Veja [CHANGELOG.md](CHANGELOG.md), [VALIDACAO.md](VALIDACAO.md) e [PENDENCIAS.md](PENDENCIAS.md). Referências da plataforma: [injeção de scripts](https://developer.chrome.com/docs/extensions/reference/api/scripting), [downloads](https://developer.chrome.com/docs/extensions/reference/api/downloads), [ExcelJS](https://github.com/exceljs/exceljs).
 
-> O modelo desta versão é um XLSX por indicador e por competência. Quando os filtros resultarem em mais de um arquivo, o popup mostra uma confirmação com a quantidade de arquivos e registros antes de iniciar os downloads.
-
-## Modos de Formatação
-
-- **Planilha completa:** Inclui as variáveis do indicador, além das colunas fixas. 
-<br>PÚBLICO: Ideal para análises mais detalhadas.
-- **Apenas dados analíticos:** Mantém apenas o necessário. Colunas fixas e pontuação com classificação.
-<br>PÚBLICO: Ideal para informações rápidas.
-
-Os metadados referem se aos dados de confirmação da planilha, que trazem dados como competência, indicadores, etc. Necessário apenas para verificação.
-
-## Limitações importantes
-
-- Mantenha a **mesma aba SIAPS aberta e sem recarregar** entre a consolidação e o download. A consolidação é invalidada se a aba for recarregada, fechada ou trocada.
-- Fechar o popup não interrompe uma execução. Ao reabri-lo, o status e os logs recentes são recuperados enquanto a aba SIAPS permanecer válida.
-- Muitas competências e indicadores podem consumir memória da aba. A versão não impõe limite, mas recomenda consolidar conjuntos grandes em lotes menores quando necessário.
-- A disponibilidade de dados depende do SIAPS para cada competência e indicador selecionado.
-
----
-
-Em casos de dúvidas ou sugestões, envie um e-mail para guilherme.paicheco@betim.mg.gov.br! 
-<br> Um bom trabalho a todos!
-
----
-
-## Guia rápido do repositório
-
-Extensão Chrome para consolidar indicadores do SIAPS por competência, filtrar equipes e exportar planilhas XLSX.
-
-**Contexto:** Ferramenta interna.
-
-Consulte os requisitos e as limitações nas seções acima antes de usar o sistema. Esta atualização revisa a documentação; não representa uma nova validação de execução ou de segurança.
+Suporte institucional: guilherme.paicheco@betim.mg.gov.br.

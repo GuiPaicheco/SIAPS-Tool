@@ -1,146 +1,72 @@
 <!doctype html>
-<!-- Desenvolvido por: Guilherme Paicheco Ferreira (guilherme.paicheco@betim.mg.gov.br)-->
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SIAPS-TOOL</title>
+    <title>SIAPS Tool — Relatórios</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="app-shell">
       <header class="brand-header">
-        <div class="brand-left">
-          <img class="logo logo-betim" src="assets/logo-betim.png" alt="Prefeitura de Betim">
-          <div>
-            <h1>SIAPS-<span>TOOL</span></h1>
-            <p>DAPS • BETIM/MG</p>
-          </div>
-        </div>
-        <div class="brand-right">
-          <p>Ferramenta de Apoio<br>para a Atenção Primária à Saúde</p>
-          <img class="logo logo-sus" src="assets/logo-sus.png" alt="SUS">
-        </div>
+        <div class="brand"><img src="assets/logo-betim.png" alt="Prefeitura de Betim"><div><p class="eyebrow">DAPS · Betim/MG</p><h1>Relatórios SIAPS</h1><p>Do SIAPS para o seu Excel, passo a passo.</p></div></div>
+        <img class="sus" src="assets/logo-sus.png" alt="SUS">
       </header>
-      <button id="openWindow" class="open-window-button" type="button">Abrir em janela maior</button>
-
+      <div class="toolbar"><span id="pageContext">Verificando a aba do SIAPS…</span><button id="openWindow" type="button" class="text-button">Abrir em janela maior ↗</button></div>
+      <section id="statusCard" class="status-card" aria-live="polite" aria-atomic="true">
+        <strong id="statusTitle">Vamos preparar seu relatório</strong><p id="statusMessage">Escolha os meses e os indicadores abaixo.</p>
+        <progress id="progress" max="1" value="0" hidden aria-label="Progresso da operação"></progress>
+        <div class="status-actions"><span id="progressText"></span><button id="parar" type="button" class="secondary" hidden>Parar operação</button></div>
+      </section>
       <form id="reportForm" novalidate>
-        <section class="selection-card">
-          <div class="section-heading">
-            <span class="step">1</span>
-            <div><h2>Competências</h2><p>Adicione as competências do relatório</p></div>
-          </div>
-          <div class="competencia-fields">
-            <label class="sr-only" for="competenciaMes">Mês</label>
-            <select id="competenciaMes" aria-label="Mês da competência"><option value="01">JANEIRO</option><option value="02">FEVEREIRO</option><option value="03">MARÇO</option><option value="04">ABRIL</option><option value="05">MAIO</option><option value="06">JUNHO</option><option value="07">JULHO</option><option value="08">AGOSTO</option><option value="09">SETEMBRO</option><option value="10">OUTUBRO</option><option value="11">NOVEMBRO</option><option value="12">DEZEMBRO</option></select>
-            <label class="sr-only" for="competenciaAno">Ano</label>
-            <input id="competenciaAno" type="number" min="2000" max="2100" inputmode="numeric" aria-label="Ano da competência">
-          </div>
-          <button id="adicionarCompetencia" class="add-competencia" type="button">+ Adicionar competência</button>
-          <div id="competenciasSelecionadas" class="competencias-selecionadas" aria-live="polite"></div>
-          <small id="competenciaHelp" class="field-help"></small>
-          <p class="field-error" id="competenciaError"></p>
-        </section>
-
-        <section class="selection-card">
-          <div class="section-heading">
-            <span class="step">2</span>
-            <div><h2>Indicadores</h2><p>Selecione os indicadores a processar</p></div>
-          </div>
-          <div id="indicatorSelect"></div>
-          <p class="field-error" id="indicadoresError"></p>
-        </section>
-
-        <button class="generate-button consolidation-button" id="consolidar" type="button" disabled><span class="button-icon" aria-hidden="true">▶</span><span class="button-label">Gerar consolidações</span></button>
-        <p id="consolidationEstimate" class="time-estimate">A estimativa será calculada a partir do histórico desta extensão.</p>
-        <section id="consolidationSummary" class="consolidation-summary" hidden></section>
-        <div class="phase-heading"><span>Fase 2</span><strong>Filtrar e exportar</strong></div>
-
-        <section class="selection-card">
-          <div class="section-heading">
-            <span class="step">3</span>
-            <div><h2>Unidades</h2><p>Selecione as unidades, quando disponíveis</p></div>
-          </div>
-          <div id="unitSelect"></div>
-          <p class="field-help" id="unidadesHelp">Disponível após carregar dados do SIAPS.</p>
-          <p class="field-error" id="unidadesError"></p>
-        </section>
-
-        <section class="selection-card">
-          <div class="section-heading">
-            <span class="step">4</span>
-            <div><h2>Equipes</h2><p>Selecione as equipes, quando disponíveis</p></div>
-          </div>
-          <div id="teamSelect"></div>
-          <p class="field-help" id="equipesHelp">Disponível após carregar dados do SIAPS.</p>
-          <p class="field-warning" id="equipesWarning"></p>
-          <p class="field-error" id="equipesError"></p>
-        </section>
-
-        <div class="two-cards">
-         <section class="option-card">
-           <div class="mini-heading"><span class="icon" aria-hidden="true">⚙</span><h2>Opções</h2></div>
-            <label for="modoDados">Conteúdo da planilha</label>
-            <select id="modoDados">
-              <option value="completo">Planilha completa</option>
-              <option value="analitico">Apenas dados analíticos</option>
-            </select>
-            <small class="option-help">Dados analíticos incluem as colunas fixas, pontuação e classificação.</small>
-            <label for="modoUnificacao">Arquivos</label>
-            <select id="modoUnificacao">
-              <option value="separado">Separados por indicador e competência</option>
-              <option value="unificado">Um XLSX consolidado</option>
-            </select>
-            <label for="agruparUnificacao">Guias do consolidado</label>
-            <select id="agruparUnificacao" disabled>
-              <option value="sequencia">Uma guia com todos os dados</option>
-              <option value="competencia">Uma guia por competência</option>
-              <option value="unidade">Uma guia por unidade</option>
-              <option value="equipe">Uma guia por equipe</option>
-              <option value="indicador">Uma guia por indicador</option>
-            </select>
-            <label class="toggle-row" for="metadados">
-              <input id="metadados" type="checkbox" checked>
-              <span><strong>Incluir metadados institucionais</strong><small>Inclui cabeçalho, município, filtros e fonte.</small></span>
-            </label>
+        <fieldset id="configFields">
+          <legend class="sr-only">Configuração da consulta</legend>
+          <section class="card">
+            <div class="section-heading"><span class="step">1</span><div><h2>Escolha o que consultar</h2><p>Selecione os meses de referência e os relatórios que precisa.</p></div></div>
+            <label for="competencia">Mês de referência <span class="muted">(competência)</span></label>
+            <div class="month-row"><input id="competencia" type="month" min="2000-01" max="2100-12" aria-describedby="monthHelp"><button id="adicionarCompetencia" type="button" class="secondary">Adicionar mês</button></div>
+            <p id="monthHelp" class="help">Você pode adicionar até 36 meses. A disponibilidade dos dados será verificada na consulta.</p>
+            <div id="competenciasSelecionadas" class="chips" aria-label="Meses escolhidos"></div>
+            <div id="indicatorSelect" class="selector"></div>
+            <p id="configError" class="field-error" role="alert"></p>
           </section>
-          <section class="option-card">
-            <div class="mini-heading"><span class="icon" aria-hidden="true">↕</span><h2>Ordenação</h2></div>
-            <label for="ordenarCampo">Ordenar por</label>
-            <select id="ordenarCampo" disabled><option value="score">Pontuação</option></select>
-            <label for="ordenarDirecao">Ordem</label>
-            <select id="ordenarDirecao"><option value="desc">Maior → Menor</option><option value="asc">Menor → Maior</option></select>
+          <section class="card query-card">
+            <div class="section-heading"><span class="step">2</span><div><h2>Consulte os dados no SIAPS</h2><p>A consulta pode levar alguns minutos. Você pode fechar esta janela; mantenha a aba do SIAPS aberta e sem recarregar.</p></div></div>
+            <div class="query-summary" id="querySummary"></div>
+            <div class="actions"><button id="consolidar" type="button" class="primary" disabled>Consultar dados do SIAPS</button><button id="atualizar" type="button" class="secondary" hidden>Atualizar dados</button></div>
+            <p class="help">Consultas concluídas podem ser reaproveitadas por até 15 minutos nesta aba. “Atualizar dados” faz uma nova busca.</p>
           </section>
-        </div>
-
-        <p class="selection-count" id="selectionCount">Gere uma consolidação para habilitar a exportação.</p>
-        <section id="downloadConfirmation" class="download-confirmation" hidden aria-live="polite">
-          <strong>Confirmar downloads</strong>
-          <p id="downloadConfirmationText"></p>
-          <div class="confirmation-actions">
-            <button id="cancelarDownloads" type="button" class="secondary-button">Cancelar</button>
-            <button id="confirmarDownloads" type="button" class="primary-button">Confirmar downloads</button>
-          </div>
+        </fieldset>
+        <section id="failuresSection" class="card warning" hidden>
+          <h2>Algumas consultas precisam de atenção</h2><ul id="failures"></ul><button id="tentarNovamente" type="button" class="secondary">Continuar / tentar pendências</button>
         </section>
-        <button class="generate-button" id="baixar" type="submit" disabled>
-          <span class="button-icon" aria-hidden="true">↓</span>
-          <span class="button-label">Baixar planilha</span>
-        </button>
+        <section id="resultSection" class="card" hidden>
+          <div class="section-heading"><span class="step">3</span><div><h2>Confira e baixe seu Excel</h2><p>Escolha as equipes e veja uma amostra antes de baixar.</p></div></div>
+          <div id="consolidationSummary" class="result-summary"></div>
+          <fieldset id="exportFields">
+            <legend class="sr-only">Filtros e formato da planilha</legend>
+            <div class="grid"><div id="unitSelect" class="selector"></div><div id="teamSelect" class="selector"></div></div>
+            <div class="grid">
+              <div><label for="modoDados">O que incluir?</label><select id="modoDados"><option value="completo">Detalhado: dados usados no cálculo</option><option value="analitico">Resumo: pontuação e classificação</option></select><p class="help">Ambos incluem mês, indicador, unidade e equipe.</p></div>
+              <div><label for="modoUnificacao">Como organizar os arquivos?</label><select id="modoUnificacao"><option value="unificado">Um arquivo Excel</option><option value="separado">Um arquivo por indicador e mês</option></select></div>
+              <div id="groupField"><label for="agruparUnificacao">Como dividir as abas do Excel?</label><select id="agruparUnificacao"><option value="competencia">Uma aba por mês</option><option value="indicador">Uma aba por indicador</option><option value="unidade">Uma aba por unidade</option><option value="equipe">Uma aba por equipe</option><option value="sequencia">Todos os dados na mesma aba</option></select></div>
+              <div><label for="ordenarCampo">Ordenar por</label><select id="ordenarCampo"><option value="score">Pontuação</option></select></div>
+              <div><label for="ordenarDirecao">Ordem</label><select id="ordenarDirecao"><option value="desc">Maior para menor</option><option value="asc">Menor para maior</option></select></div>
+            </div>
+            <label class="check-row"><input id="metadados" type="checkbox" checked><span>Incluir cabeçalho e informações do relatório</span></label>
+            <label id="partialRow" class="check-row warning" hidden><input id="aceitarParcial" type="checkbox"><span>Conferi as pendências e quero baixar apenas os dados disponíveis. O arquivo será identificado como parcial.</span></label>
+          </fieldset>
+          <p id="selectionCount" class="selection-count" aria-live="polite"></p>
+          <details id="previewDetails"><summary>Ver exemplo da planilha <span class="muted">(até 5 linhas da primeira aba)</span></summary><div id="previewTable" class="table-wrap" tabindex="0" role="region" aria-label="Exemplo da planilha"></div></details>
+          <p id="exportError" class="field-error" role="alert"></p>
+          <div id="downloadConfirmation" class="confirmation" hidden><p id="downloadConfirmationText"></p><div class="actions"><button type="button" id="cancelarDownloads" class="secondary">Voltar</button><button type="button" id="confirmarDownloads" class="primary">Confirmar downloads</button></div></div>
+          <button id="baixar" type="submit" class="primary download" disabled>Baixar Excel</button>
+          <p class="help">O destino dos arquivos segue a configuração de downloads do seu Chrome.</p>
+        </section>
       </form>
-
-      <section class="status-card" id="statusCard" aria-live="polite">
-        <div class="status-line"><span class="status-dot"></span><strong id="statusTitle">Pronto para gerar</strong></div>
-        <p id="statusMessage">Configure as opções acima e clique em “Gerar relatório”.</p>
-        <div class="progress-wrap" id="progressWrap" hidden><div class="progress-track"><span id="progressBar"></span></div><small id="progressText"></small></div>
-      </section>
-
-      <section class="log-card">
-        <div class="log-heading"><h2>Log de execução</h2><button type="button" id="limparLog" class="text-button">Limpar</button></div>
-        <div id="executionLog" class="execution-log" role="log" aria-live="polite"></div>
-      </section>
-
-      <footer>SIAPS-TOOL <span>•</span> DAPS • Betim/MG <span>•</span> v1.0.0</footer>
+      <details class="card technical"><summary>Detalhes técnicos e diagnóstico</summary><div class="actions"><button id="limparLog" type="button" class="text-button">Limpar histórico</button><button id="copiarDiagnostico" type="button" class="text-button">Copiar diagnóstico</button></div><div id="executionLog" class="execution-log"></div></details>
+      <footer>SIAPS Tool · DAPS Betim/MG · <span id="version"></span></footer>
     </main>
-    <script src="popup.js"></script>
+    <script src="core.js"></script><script src="popup.js"></script>
   </body>
 </html>
