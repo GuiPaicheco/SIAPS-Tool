@@ -1,5 +1,11 @@
 # Validação da versão 1.1.0
 
+## Correção 1.1.1
+
+O relato e a captura do usuário expuseram uma lacuna: o teste anterior abria `popup.html` em uma aba com viewport definido, sem exercitar o dimensionamento automático do popup da barra. O limite `max-width:100vw` foi removido e a largura mínima de 600px aplica-se somente ao popup. A janela maior mantém largura fluida.
+
+O teste `node tests/popup.cjs` abre o popup real por `chrome.action.openPopup`, mede largura/rolagem via CDP e salva `test-results/popup-real.png`. A medição local com a correção foi: viewport 615px, corpo 600px, sem rolagem horizontal. O espaço adicional corresponde à barra de rolagem vertical.
+
 Data: 10/11/2026. Ambiente local: Windows, Node.js 24.22.1, Chromium 141 (perfil de testes separado).
 
 ## Verificações automatizadas

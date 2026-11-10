@@ -1,15 +1,15 @@
 # SIAPS Tool · DAPS Betim/MG
 
-Extensão Chrome para consultar indicadores do SIAPS, selecionar unidades/equipes e baixar relatórios Excel. **Versão 1.1.0 · Chrome 120 ou superior.** Município: Betim, IBGE 310670.
+Extensão Chrome para consultar indicadores do SIAPS, selecionar unidades/equipes e baixar relatórios Excel. **Versão 1.1.1 · Chrome 120 ou superior.** Município: Betim, IBGE 310670.
 
 ## Instalar ou atualizar
 
-1. Baixe [SIAPS-TOOL-1.1.0.zip](dist/SIAPS-TOOL-1.1.0.zip) e extraia em uma pasta que não será apagada.
+1. Baixe [SIAPS-TOOL-1.1.1.zip](dist/SIAPS-TOOL-1.1.1.zip) e extraia em uma pasta que não será apagada.
 2. No Chrome, abra `chrome://extensions` e ative **Modo do desenvolvedor**.
 3. Para instalar, use **Carregar sem compactação** e escolha a pasta extraída. Para atualizar uma instalação existente, substitua os arquivos na pasta original e clique no botão de recarregar da extensão.
 4. Fixe a extensão na barra do Chrome. A permissão **downloads**, nova nesta versão, permite iniciar e acompanhar a conclusão dos arquivos.
 
-Use o pacote 1.1.0. O pacote antigo 1.0.0 não corresponde aos recursos atuais. A instalação por modo desenvolvedor depende das permissões/políticas do computador institucional.
+Use o pacote 1.1.1, que corrige a largura do popup. A instalação por modo desenvolvedor depende das permissões/políticas do computador institucional.
 
 ## Emitir um relatório
 

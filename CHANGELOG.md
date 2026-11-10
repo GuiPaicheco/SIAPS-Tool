@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.1.1 — 10/11/2026
+
+- Corrige o encolhimento do popup ao abrir pela barra de ferramentas do Chrome: remove o limite circular de `100vw` e fixa a largura mínima de 600px somente no popup.
+- A janela maior continua redimensionável, inclusive em telas estreitas.
+- Acrescenta teste específico para o popup real, além do teste da interface em aba.
+
 ## 1.1.0 — 10/11/2026
 
 - Execução independente por aba, com identificação de job/documento, término estruturado e bloqueio de operações concorrentes na mesma aba.

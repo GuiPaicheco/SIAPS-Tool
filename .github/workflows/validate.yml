@@ -25,12 +25,13 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm test:browser --package
+      - run: pnpm test:popup
       - uses: actions/upload-artifact@v4
         with:
           name: SIAPS-Tool
           path: |
-            dist/SIAPS-TOOL-1.1.0.zip
-            dist/SIAPS-TOOL-1.1.0.zip.sha256
+            dist/SIAPS-TOOL-1.1.1.zip
+            dist/SIAPS-TOOL-1.1.1.zip.sha256
       - uses: actions/upload-artifact@v4
         if: always()
         with:
