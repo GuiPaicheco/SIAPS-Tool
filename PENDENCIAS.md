@@ -4,6 +4,9 @@ Devo lembrar de fazer em casa ou nos períodos mais tranquilos!
 
 ## Andamento
 
+Atualizações incrementais apenas na `main`, com testes locais e validação de uma correção por vez.
+
+- [x] Correção 3: recuperação ao reabrir o popup com consolidação e filtros na mesma aba SIAPS. Implementada no commit `1f2700b` e validada pelo usuário em 10/11/2026.
 - [x] Exportação em lote: downloads sequenciais com progresso por arquivo e intervalo controlado.
 - [x] Cache seguro de consolidações por aba SIAPS, sem persistir dados volumosos no storage.
 - [x] Estimativas de tempo de consolidação e exportação com histórico local de duração.
