@@ -6,7 +6,8 @@ permissions:
   contents: read
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    # Fixa a imagem para o sistema suportado pelo Chromium/Playwright do lockfile.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
