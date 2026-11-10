@@ -379,7 +379,7 @@ function atualizarFaseExportacao() {
 }
 
 function atualizarContagemExportacao() {
-  if (!state.consolidacao) return;
+  if (!state.consolidacao || !state.tabId || !state.controllers.indicadores || !state.controllers.unidades || !state.controllers.equipes) return;
   ocultarConfirmacaoDownloads();
   const total = state.consolidacao.registros || 0;
   ui.selectionCount.textContent = "Calculando resultado dos filtros...";
@@ -536,7 +536,8 @@ async function iniciar() {
   ui.agruparUnificacao.disabled = ui.modoUnificacao.value !== "unificado";
   ui.direcaoOrdenacao.value = configuracaoSalva.ordenacao?.direcao === "asc" ? "asc" : "desc";
   preencherCamposOrdenacao([], configuracaoSalva.ordenacao?.campo);
-  aplicarEstadoExecucao(execucao || { mensagens: [], status: "Pronto para gerar." });
+  // O resumo depende dos controles e da aba, que ainda serão inicializados.
+  aplicarEstadoExecucao({ ...(execucao || { mensagens: [], status: "Pronto para gerar." }), consolidacao: null });
   const tabIdDaConsulta = Number(
     new URLSearchParams(window.location.search).get("tabId")
   );
@@ -558,14 +559,8 @@ async function iniciar() {
     state.competencias = [...new Set(configuracaoSalva.competencias?.length ? configuracaoSalva.competencias : [competencia])];
     atualizarCompetenciasSelecionadas();
     configurarControles(configuracaoSalva);
+    state.consolidacao ||= execucao?.consolidacao || null;
     atualizarEstimativaConsolidacao();
-    preencherOpcoes(
-      state.consolidacao
-        ? opcoesDados.siapsToolOptions
-        : { unidades: [], equipes: [] },
-      configuracaoSalva
-    );
-    atualizarCamposOrdenacao();
     const pertenceAbaAtual = !state.consolidacao?.tabId || (
       state.consolidacao.tabId === state.tabId &&
       (!state.consolidacao.pageUrl || state.consolidacao.pageUrl === state.tabUrl)
@@ -573,6 +568,13 @@ async function iniciar() {
     if (state.consolidacao && (!pertenceAbaAtual || !consolidacaoCompativel())) {
       invalidarConsolidacao();
     }
+    preencherOpcoes(
+      state.consolidacao
+        ? opcoesDados.siapsToolOptions
+        : { unidades: [], equipes: [] },
+      configuracaoSalva
+    );
+    atualizarCamposOrdenacao();
     if (!state.consolidacao) {
       aplicarEstadoExecucao({ ...(execucao || { mensagens: [], status: "Pronto para gerar." }), consolidacao: null });
       return;
