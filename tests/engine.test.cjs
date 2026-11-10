@@ -57,10 +57,19 @@ test('retry incremental só busca falhas; concorrência é limitada e cache inde
   const count = e.calls.length; await e.api.executar('exportar', { modoDados: 'completo', unificacao: { modo: 'unificado' } }, 'c');
   assert.equal(e.calls.length, count); assert.equal(e.downloads.length, 1); assert.equal(e.events.at(-1).nivel, 'success'); assert.equal(e.api.ocupado(), false);
 });
-test('HTTP 401 é terminal e não usa fallback conhecido para M2', async () => {
+test('HTTP 401 só repete uma vez após renovação; não usa fallback conhecido para M2', async () => {
   const e = engine(() => new Response('', { status: 401 }));
   await e.api.executar('consolidar', { ...options, indicadores: { modo: 'selecionados', valores: ['M2'] } }, 'a');
-  assert.equal(e.calls.length, 1); assert.equal(e.events.at(-1).nivel, 'warning'); assert.match(e.events.at(-1).status, /sessão/);
+  assert.equal(e.calls.length, 2); assert.equal(e.events.at(-1).nivel, 'warning'); assert.match(e.events.at(-1).status, /sessão/);
+});
+test('JWT que parece expirado pelo relógio local não bloqueia uma API que o aceita', async () => {
+  const jwt = `eyJhbGciOiJub25lIn0.${Buffer.from(JSON.stringify({ sub: 'teste', iss: 'siaps', exp: 1 })).toString('base64url')}.assinatura-sintetica`;
+  const e = engine(response, () => jwt);
+  await e.api.executar('consolidar', options, 'a'); assert.equal(e.events.at(-1).nivel, 'success');
+});
+test('falha técnica na leitura não é apresentada como sessão expirada', async () => {
+  const e = engine(response, () => null);
+  await e.api.executar('consolidar', options, 'a'); assert.doesNotMatch(e.events.at(-1).status, /expirou|expirada/);
 });
 test('download parcial exige consentimento e nome explícito; sucesso unificado sempre termina', async () => {
   const e = engine(url => url.pathname.includes('visao-competencia') && url.searchParams.get('indicadores') === '108' ? new Response('', { status: 400 }) : response(url));

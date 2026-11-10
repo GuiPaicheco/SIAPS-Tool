@@ -22,10 +22,16 @@ async function run() {
   }
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'siaps-test-'));
   const context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, acceptDownloads: true, args: [`--disable-extensions-except=${extensionRoot}`, `--load-extension=${extensionRoot}`], viewport: { width: 1000, height: 900 } });
-  const errors = [], calls = []; let failC2 = true, slow = false;
+  const errors = [], calls = []; let failC2 = true, slow = false, authRequests = 0;
   context.on('page', p => p.on('pageerror', e => errors.push(e.message)));
   try {
-    await context.route('https://siaps.saude.gov.br/**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>SIAPS simulado</title><h1>Visão por Competência — teste sintético</h1><script>sessionStorage.setItem("access_token","token-sintetico-sem-acesso-real")</script>' }));
+    await context.route('https://siaps.saude.gov.br/**', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>SIAPS simulado</title><h1>Visão por Competência — teste sintético</h1><script>sessionStorage.setItem("access_token","token-sintetico-sem-acesso-real");sessionStorage.setItem("refresh_token","renovacao-sintetica");sessionStorage.setItem("expires_in","1")</script>' }));
+    await context.route('https://apiautenticacao-aps.saude.gov.br/**', route => {
+      const headers = { 'access-control-allow-origin': 'https://siaps.saude.gov.br', 'access-control-allow-headers': 'authorization,content-type', 'access-control-allow-methods': 'POST' };
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+      authRequests++;
+      return route.fulfill({ headers, json: { access_token: 'token-sintetico-renovado', refresh_token: 'renovacao-sintetica', expires_in: 300, refresh_expires_in: 900 } });
+    });
     await context.route('https://apisiaps.saude.gov.br/**', async route => {
       const url = new URL(route.request().url());
       if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': 'https://siaps.saude.gov.br', 'access-control-allow-headers': 'authorization,accept', 'access-control-allow-methods': 'GET' } });
@@ -34,7 +40,8 @@ async function run() {
       const headers = { 'access-control-allow-origin': 'https://siaps.saude.gov.br' };
       const id = Number(url.searchParams.get('indicadores') || url.searchParams.get('indicador'));
       let body;
-      if (url.pathname.includes('tipos-equipes')) body = ['eSF'];
+      if (url.pathname === '/usuario/info') body = { perfil: 'sintetico' };
+      else if (url.pathname.includes('tipos-equipes')) body = ['eSF'];
       else if (url.pathname.includes('/variaveis')) body = [{ noParametro: 'TOTAL', descricao: 'Total de atendimentos' }, { noParametro: 'PONTUACAO', descricao: 'Numerador/Denominador' }];
       else {
         if (id === 108 && failC2) return route.fulfill({ status: 400, headers, body: 'Falha sintética' });
@@ -59,6 +66,9 @@ async function run() {
     await ui.goto(`chrome-extension://${extensionId}/popup.html?tabId=${tabId}`);
     await ui.locator('#consolidar:enabled').waitFor();
     console.log('Interface inicializada.');
+    await ui.locator('#verificarSessao').click();
+    await ui.locator('#sessionBadge').filter({ hasText: 'Conexão confirmada' }).waitFor();
+    assert.equal(authRequests, 1, 'deve renovar a sessão sintética pelo serviço oficial simulado');
     await ui.locator('#competenciasSelecionadas button').click();
     await ui.locator('#competencia').fill('2026-06'); await ui.locator('#adicionarCompetencia').click();
     await ui.locator('#indicatorSelect summary').click();
@@ -145,8 +155,8 @@ async function run() {
     // Recarregar invalida os dados daquele documento.
     await siaps.reload(); await ui.locator('#resultSection').waitFor({ state: 'hidden' });
     assert.deepEqual(errors, []);
-    fs.writeFileSync(path.join(root, 'test-results/browser.json'), JSON.stringify({ passed: true, pacote: process.argv.includes('--package'), scenarios: ['coleta parcial', 'aceite parcial', 'download real confirmado', 'XLSX reaberto', 'reabrir popup', 'retry incremental', 'seleção vazia', 'ordenação global', '360px', 'isolamento por aba', 'cancelar e retomar', '12 downloads em lote', 'recarregar'], apiCalls: calls.length, pageErrors: errors }, null, 2));
-    console.log(`Browser: 13 cenários concluídos; ${calls.length} chamadas sintéticas; nenhum acesso ao SIAPS real.`);
+    fs.writeFileSync(path.join(root, 'test-results/browser.json'), JSON.stringify({ passed: true, pacote: process.argv.includes('--package'), scenarios: ['renovar sessão e verificar conexão', 'coleta parcial', 'aceite parcial', 'download real confirmado', 'XLSX reaberto', 'reabrir popup', 'retry incremental', 'seleção vazia', 'ordenação global', '360px', 'isolamento por aba', 'cancelar e retomar', '12 downloads em lote', 'recarregar'], authRequests, apiCalls: calls.length, pageErrors: errors }, null, 2));
+    console.log(`Browser: 14 cenários concluídos; ${calls.length} chamadas sintéticas; nenhum acesso ao SIAPS real.`);
   } catch (error) {
     for (const page of context.pages()) if (page.url().includes('/popup.html')) {
       console.error('Estado da interface:', await page.locator('#statusMessage').textContent().catch(() => ''), 'Erros:', errors);

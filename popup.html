@@ -13,6 +13,12 @@
         <img class="sus" src="assets/logo-sus.png" alt="SUS">
       </header>
       <div class="toolbar"><span id="pageContext">Verificando a aba do SIAPS…</span><button id="openWindow" type="button" class="text-button">Abrir em janela maior ↗</button></div>
+      <section id="sessionCard" class="session-card" aria-live="polite">
+        <div class="session-heading"><h2>Conexão com o SIAPS</h2><strong id="sessionBadge">Verificando…</strong></div>
+        <p id="sessionMessage">Vamos identificar a sessão da aba aberta.</p>
+        <p id="sessionHelp" class="help" hidden></p>
+        <div class="actions"><button id="verificarSessao" type="button" class="secondary" disabled>Verificar conexão</button><button id="irSiaps" type="button" class="text-button" disabled>Ir para a aba do SIAPS ↗</button></div>
+      </section>
       <section id="statusCard" class="status-card" aria-live="polite" aria-atomic="true">
         <strong id="statusTitle">Vamos preparar seu relatório</strong><p id="statusMessage">Escolha os meses e os indicadores abaixo.</p>
         <progress id="progress" max="1" value="0" hidden aria-label="Progresso da operação"></progress>

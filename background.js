@@ -1,6 +1,6 @@
 /* Estado pequeno por aba; relatórios e tokens nunca são persistidos em storage. */
 'use strict';
-importScripts('core.js', 'catalog.js');
+importScripts('core.js', 'catalog.js', 'session.js');
 const filas = new Map();
 const chave = tabId => `siaps:tab:${tabId}`;
 const vazio = tabId => ({ tabId, revisao: 0, emExecucao: false, consolidacao: null, opcoes: { unidades: [], equipes: [] }, mensagens: [], status: 'Escolha os meses e os relatórios para começar.', nivel: 'info' });
@@ -74,6 +74,7 @@ async function evento(message, sender) {
   if (message.invalidar) changes.consolidacao = null;
   if (message.opcoes) changes.opcoes = message.opcoes;
   if (message.pendencias) changes.pendencias = message.pendencias;
+  if (message.sessao) changes.sessao = message.sessao;
   const seconds = Number(message.segundos);
   if (Number.isFinite(seconds) && seconds > 0 && message.nivel === 'success') {
     const key = 'siaps:performance', data = (await chrome.storage.local.get(key))[key] || {};
@@ -90,8 +91,8 @@ async function atender(message, sender) {
     const state = await validarMotor(message, sender), tabId = sender.tab.id;
     if (message.type === 'engineEvent') return serializar(tabId, () => evento(message, sender));
     if (message.type === 'getAccessToken') {
-      const result = await chrome.scripting.executeScript({ target: { tabId, documentIds: [sender.documentId] }, world: 'MAIN', func: () => sessionStorage.getItem('access_token') });
-      return { token: result[0]?.result || null };
+      const result = await chrome.scripting.executeScript({ target: { tabId, documentIds: [sender.documentId] }, world: 'MAIN', func: lerSessaoSiaps, args: [{ renovar: true, forcar: Boolean(message.forcar), tokenAnterior: message.tokenAnterior || null }] });
+      return result[0]?.result || { estado: 'erro_leitura', mensagem: 'Não foi possível ler a sessão desta aba.' };
     }
     if (message.type === 'download') {
       if (state.operacao !== 'exportar' || typeof message.url !== 'string' || !message.url.startsWith('blob:https://siaps.saude.gov.br/') || !/^SIAPS_[a-zA-Z0-9_-]+\.xlsx$/.test(message.filename)) throw new Error('Arquivo de exportação inválido.');
@@ -112,6 +113,19 @@ async function atender(message, sender) {
   const tabId = message.tabId;
   if (message.type === 'getCatalog') return { catalogo: SiapsCatalog.map(i => ({ ...i, codigoExibicao: SiapsCore.codigo(i) })) };
   await abaValida(tabId);
+  if (message.type === 'checkSession') {
+    const result = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: lerSessaoSiaps, args: [{ renovar: Boolean(message.verificar), verificar: Boolean(message.verificar) }] });
+    const session = result[0]?.result || { estado: 'erro_leitura', mensagem: 'Não foi possível verificar a sessão.' };
+    if (message.verificar) await serializar(tabId, async () => {
+      const state = await obter(tabId);
+      if (!state.emExecucao) await salvar(tabId, { sessao: { estado: session.estado, mensagem: session.mensagem }, status: session.mensagem, nivel: ['conectada', 'renovada'].includes(session.estado) ? 'info' : 'warning' });
+    });
+    return { estado: session.estado, mensagem: session.mensagem }; // Nunca devolve token à interface.
+  }
+  if (message.type === 'focusSiaps') {
+    const tab = await chrome.tabs.update(tabId, { active: true });
+    await chrome.windows.update(tab.windowId, { focused: true }); return { ok: true };
+  }
   if (message.type === 'getExecution') return serializar(tabId, async () => ({ estado: await reconciliar(tabId) }));
   if (message.type === 'start' || message.type === 'exportConsolidation') return serializar(tabId, () => iniciar(tabId, message.type === 'start' ? 'consolidar' : 'exportar', message.configuracao || {}));
   if (message.type === 'previewExport') {
@@ -147,7 +161,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status !== 'loading') return;
   serializar(tabId, async () => {
     const state = await obter(tabId);
-    if (state.emExecucao || state.consolidacao) await salvar(tabId, { emExecucao: false, jobId: null, consolidacao: null, opcoes: vazio(tabId).opcoes, status: 'A aba do SIAPS foi recarregada. Consulte os dados novamente.', nivel: 'warning' });
+    if (state.emExecucao || state.consolidacao || state.sessao) await salvar(tabId, { emExecucao: false, jobId: null, consolidacao: null, sessao: null, opcoes: vazio(tabId).opcoes, status: 'A aba do SIAPS foi recarregada. Verifique a conexão e consulte os dados novamente.', nivel: 'warning' });
   }).catch(console.error);
 });
 chrome.tabs.onRemoved.addListener(tabId => {

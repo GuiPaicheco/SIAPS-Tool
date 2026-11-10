@@ -14,6 +14,12 @@ p { line-height: 1.55; margin: 6px 0 0; }.brand p { margin: 0; font-size: 12px; 
 .card,.status-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin: 14px 0; box-shadow: 0 2px 6px #173c5c06; }
 .status-card { background: #eaf4fd; border-color: #bdd9ed; }.status-card strong { color: #093d72; }.status-card p { margin-top: 4px; }
 .status-card.success { background: #edf8f0; border-color: #aad2b4; }.status-card.warning,.warning { background: #fff7e7; border-color: #dec589; }.status-card.error { background: #fff0f0; border-color: #dcaaaa; }
+.session-card { margin: 14px 0; padding: 16px; border: 1px solid #bdd9ed; border-left: 4px solid #125f9d; border-radius: 9px; background: #fff; }
+.session-heading { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; }.session-heading h2 { font-size: 15px; }
+#sessionBadge { font-size: 12px; border-radius: 20px; padding: 5px 10px; background: #eaf4fd; }
+.session-card.success { border-color: #25764a; }.session-card.success #sessionBadge { background: #e2f4e7; color: #17532e; }
+.session-card.warning { border-color: #a87914; }.session-card.warning #sessionBadge { background: #fff0c9; color: #614600; }
+.session-card .actions { margin-top: 12px; }
 .status-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }progress { width: 100%; height: 12px; margin-top: 12px; accent-color: var(--blue); }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }fieldset:disabled { opacity: .7; }
 .section-heading { display: flex; gap: 12px; margin-bottom: 18px; }.section-heading p { color: var(--muted); }.step { display: grid; place-items: center; flex: 0 0 29px; height: 29px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 700; }

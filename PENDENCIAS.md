@@ -17,6 +17,6 @@
 - [ ] Retomar só arquivos que faltaram em uma exportação interrompida. Hoje a coleta é retomada por cache, mas repetir exportação pode baixar novamente os arquivos anteriores.
 - [ ] Favoritos de relatórios e seleção de intervalo contínuo de meses, após validar a demanda.
 - [ ] Distribuição institucional gerenciada e atualização simplificada conforme as políticas locais.
-- [ ] Renovação oficial da autenticação somente se houver mecanismo autorizado/documentado. Não simular atividade para contornar expiração.
+- [ ] Homologar a renovação 1.1.2 com uma sessão institucional real. O fluxo oficial foi identificado no JavaScript público e implementado; não há simulação de atividade ou renovação periódica para contornar inatividade.
 
 As melhorias descritas no changelog foram implementadas. Os itens acima são validações ou evoluções que dependem de acesso institucional, evidência de desempenho ou decisões de produto.

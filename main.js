@@ -16,13 +16,14 @@
       signal.addEventListener('abort', abort, { once: true });
     });
     const event = (evento, value = {}) => send({ type: 'engineEvent', jobId: execucao.jobId, evento, ...value });
-    async function token() {
+    async function token(options = {}) {
       check();
-      const result = await send({ type: 'getAccessToken', jobId: execucao.jobId });
-      if (result.erro || !result.token) throw Object.assign(new Error('Sua sessão terminou. Entre novamente no SIAPS e tente as pendências.'), { auth: true });
-      let exp;
-      try { exp = JSON.parse(atob(result.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp; } catch { /* Token opaco: o servidor valida a expiração. */ }
-      if (exp && Number(exp) * 1000 <= Date.now()) throw Object.assign(new Error('Sua sessão expirou. Entre novamente no SIAPS e tente as pendências.'), { auth: true });
+      const result = await send({ type: 'getAccessToken', jobId: execucao.jobId, ...options });
+      check();
+      if (result.erro) throw Object.assign(new Error(`Falha na comunicação da extensão com a aba do SIAPS: ${result.erro}`), { sessao: 'erro_leitura' });
+      if (!result.token) throw Object.assign(new Error(result.mensagem || 'Não encontramos uma sessão nesta aba do SIAPS.'), { auth: ['ausente', 'login_necessario'].includes(result.estado), sessao: result.estado || 'ausente' });
+      execucao.sessao = { estado: result.estado || 'encontrada', mensagem: result.mensagem || 'Sessão encontrada nesta aba.' };
+      // O relógio local/JWT é apenas um indício. A resposta do SIAPS decide a validade.
       return result.token;
     }
     async function identidade(value) {
@@ -43,6 +44,7 @@
       contexto = atual;
     }
     async function request(path) {
+      let renovou = false;
       for (let tentativa = 1; tentativa <= 3; tentativa++) {
         check();
         const accessToken = await token(); await validarContexto(accessToken);
@@ -50,10 +52,17 @@
         const signal = AbortSignal.any([execucao.controller.signal, AbortSignal.timeout(30000)]);
         try {
           const response = await fetch(`https://apisiaps.saude.gov.br/${path}`, { headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' }, signal });
-          if (response.status === 401 || response.status === 403) throw Object.assign(new Error('Sua sessão terminou ou não permite esta consulta. Entre novamente no SIAPS.'), { auth: true, status: response.status });
+          if (response.status === 401 && !renovou) {
+            renovou = true;
+            await validarContexto(await token({ forcar: true, tokenAnterior: accessToken }));
+            tentativa--; continue; // Só uma renovação por requisição; não repete o token recusado indefinidamente.
+          }
+          if (response.status === 401) throw Object.assign(new Error('O SIAPS recusou sua sessão após a tentativa de renovação. Entre novamente pelo acesso oficial.'), { auth: true, sessao: 'login_necessario', status: 401 });
+          if (response.status === 403) throw Object.assign(new Error('O SIAPS não autorizou esta consulta para seu perfil. Isso não significa que a sessão expirou.'), { sessao: 'sem_permissao', status: 403 });
           if (response.ok) {
             const body = await response.json();
             if (contextoDaChamada !== contexto) throw Object.assign(new Error('A sessão mudou durante a consulta. Consulte novamente.'), { auth: true });
+            execucao.sessao = { estado: 'conectada', mensagem: 'O SIAPS aceitou sua sessão durante a consulta.' };
             return body;
           }
           const error = Object.assign(new Error(`O SIAPS respondeu HTTP ${response.status}.`), { status: response.status });
@@ -62,7 +71,7 @@
           const parsed = retry ? (Number.isFinite(Number(retry)) ? Number(retry) * 1000 : Date.parse(retry) - Date.now()) : 0;
           await sleep(Math.min(60000, Math.max(1000 * 2 ** (tentativa - 1) + Math.random() * 300, parsed || 0)));
         } catch (error) {
-          if (execucao.controller.signal.aborted || error.auth || error.status || error instanceof SyntaxError || tentativa === 3) throw error;
+          if (execucao.controller.signal.aborted || error.auth || error.sessao || error.status || error instanceof SyntaxError || tentativa === 3) throw error;
           await sleep(1000 * 2 ** (tentativa - 1));
         }
       }
@@ -157,7 +166,7 @@
           } catch (error) {
             if (execucao.controller.signal.aborted) throw error;
             falhas.push({ competencia, codigo: indicador.codigo, erro: error.message });
-            if (error.auth) fatal = error;
+            if (error.auth || error.sessao) fatal = error;
           }
           concluidos++;
           await event('progress', { mensagem: `${C.codigo(indicador)} · ${C.formatarCompetencia(competencia)}: ${concluidos} de ${tasks.length} consultas verificadas.`, progresso: { atual: concluidos, total: tasks.length } });
@@ -180,7 +189,7 @@
         camposOrdenacao: [...new Map(relatorios.flatMap(r => C.esquema(r.variaveis, r.indicador.id)).map(col => [col.id, { valor: col.id, rotulo: col.titulo }])).values()]
       };
       consolidacao = { relatorios, resumo, opcoes: opts };
-      await event('finished', { consolidacao: records ? resumo : null, pendencias: falhas, opcoes: opts, nivel: falhas.length || cancelled ? 'warning' : 'success', status: cancelled ? 'Consulta interrompida. Continue para reaproveitar os dados já consultados.' : fatal ? fatal.message : falhas.length ? `${relatorios.length} de ${tasks.length} consultas disponíveis. Confira as pendências.` : records ? 'Dados consultados. Confira os filtros e prepare seu Excel.' : 'Não há dados para os meses e indicadores escolhidos.', segundos: (Date.now() - inicio) / 1000 });
+      await event('finished', { consolidacao: records ? resumo : null, pendencias: falhas, opcoes: opts, sessao: fatal?.sessao ? { estado: fatal.sessao, mensagem: fatal.message } : execucao.sessao, nivel: falhas.length || cancelled ? 'warning' : 'success', status: cancelled ? 'Consulta interrompida. Continue para reaproveitar os dados já consultados.' : fatal ? fatal.message : falhas.length ? `${relatorios.length} de ${tasks.length} consultas disponíveis. Confira as pendências.` : records ? 'Dados consultados. Confira os filtros e prepare seu Excel.' : 'Não há dados para os meses e indicadores escolhidos.', segundos: (Date.now() - inicio) / 1000 });
     }
     function preview(options) {
       if (!consolidacao) throw new Error('Consulte os dados novamente nesta aba do SIAPS.');
@@ -238,7 +247,7 @@
       execucao = { jobId, controller: new AbortController() };
       try { await (op === 'exportar' ? exportar(options) : consolidar(options)); }
       catch (error) {
-        await event('finished', { status: execucao.controller.signal.aborted ? 'Operação interrompida. Os dados consultados continuam nesta aba.' : error.auth ? error.message : `Não foi possível concluir: ${error.message}`, nivel: error.auth || execucao.controller.signal.aborted ? 'warning' : 'error', invalidar: !consolidacao });
+        await event('finished', { status: execucao.controller.signal.aborted ? 'Operação interrompida. Os dados consultados continuam nesta aba.' : error.auth || error.sessao ? error.message : `Não foi possível concluir: ${error.message}`, sessao: error.sessao ? { estado: error.sessao, mensagem: error.message } : execucao.sessao, nivel: error.auth || error.sessao || execucao.controller.signal.aborted ? 'warning' : 'error', invalidar: !consolidacao });
       } finally { execucao = null; }
     }
     globalThis.__SIAPS_TOOL_ENGINE__ = { preview, executar, cancelar() { execucao?.controller.abort(new DOMException('Operação interrompida.', 'AbortError')); }, disponivel: () => Boolean(consolidacao), ocupado: () => Boolean(execucao) };

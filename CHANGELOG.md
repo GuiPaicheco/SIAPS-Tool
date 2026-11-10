@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.1.2 — 10/11/2026
+
+- Remove o bloqueio baseado apenas na expiração do JWT pelo relógio local e separa falhas de comunicação/leitura de encerramento de sessão.
+- Usa o endpoint oficial de renovação identificado no código público do SIAPS (`auth/refresh-token`), somente durante consulta ou verificação solicitada. Compartilha renovações simultâneas e preserva mudanças feitas pelo SIAPS, inclusive logout.
+- Após HTTP 401, tenta renovar e repetir a requisição uma vez. HTTP 403 é falta de permissão, sem afirmar que a sessão expirou.
+- Novo cartão de conexão com diagnóstico explícito, botão de verificação e atalho para a aba do SIAPS. Mensagens repetidas das pendências são agrupadas.
+- Testes de renovação, corrida entre requisições, logout, leitura indisponível, autorização e conexão no navegador com autenticação simulada.
+
 ## 1.1.1 — 10/11/2026
 
 - Corrige o encolhimento do popup ao abrir pela barra de ferramentas do Chrome: remove o limite circular de `100vw` e fixa a largura mínima de 600px somente no popup.

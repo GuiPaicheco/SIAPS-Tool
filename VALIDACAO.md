@@ -1,5 +1,15 @@
 # Validação da versão 1.1.0
 
+## Correção 1.1.2
+
+O fluxo de renovação foi conferido no JavaScript público de produção `https://siaps.saude.gov.br/main.bfe120fa7e38db34.js` em 10/11/2026: `baseUrlAuth=https://apiautenticacao-aps.saude.gov.br/`, POST `auth/refresh-token`, corpo `refresh-token` e `programa=jKoa0KgJB`, atualização das chaves `access_token`, `refresh_token`, `expires_in` e `refresh_expires_in`.
+
+A extensão passa a usar esse fluxo ao consultar/verificar conexão, sem acessar módulos internos Angular/webpack e sem persistir credenciais na extensão. A interface recebe apenas estado e mensagem. A renovação não é uma atividade periódica nem muda permissões. Respostas 403 e falhas técnicas não são rotuladas como expiração.
+
+O botão “Verificar conexão” consulta a rota autenticada `/usuario/info`, usada pelo próprio SIAPS, e considera apenas o status HTTP. O corpo do perfil não é lido nem salvo. Um endpoint público de filtros não comprovaria a validade do login.
+
+Cobertura atual: 41 testes automatizados e roteiro de navegador com 14 cenários, incluindo renovação por serviço de autenticação simulado e confirmação visual de conexão. O popup real tem roteiro separado. Não houve acesso à sessão real do usuário; renovação e contrato de produção devem ser homologados no ambiente institucional.
+
 ## Correção 1.1.1
 
 O relato e a captura do usuário expuseram uma lacuna: o teste anterior abria `popup.html` em uma aba com viewport definido, sem exercitar o dimensionamento automático do popup da barra. O limite `max-width:100vw` foi removido e a largura mínima de 600px aplica-se somente ao popup. A janela maior mantém largura fluida.

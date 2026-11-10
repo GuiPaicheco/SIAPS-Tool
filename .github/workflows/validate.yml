@@ -30,8 +30,8 @@ jobs:
         with:
           name: SIAPS-Tool
           path: |
-            dist/SIAPS-TOOL-1.1.1.zip
-            dist/SIAPS-TOOL-1.1.1.zip.sha256
+            dist/SIAPS-TOOL-1.1.2.zip
+            dist/SIAPS-TOOL-1.1.2.zip.sha256
       - uses: actions/upload-artifact@v4
         if: always()
         with:

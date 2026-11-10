@@ -58,6 +58,19 @@ function status(message, nivel = 'info') {
   $('statusTitle').textContent = { success: 'Etapa concluída', warning: 'Confira antes de continuar', error: 'Precisamos da sua atenção', info: state.execucao?.emExecucao ? 'Preparando seu relatório' : 'Vamos preparar seu relatório' }[nivel] || 'Relatórios SIAPS';
   $('statusMessage').textContent = message;
 }
+function renderSessao(session) {
+  if (!session) return;
+  const labels = { nao_verificada: 'Verificação necessária', encontrada: 'Sessão encontrada', renovada: 'Sessão renovada', conectada: 'Conexão confirmada', ausente: 'Entre no SIAPS', login_necessario: 'Novo acesso necessário', sem_permissao: 'Perfil sem autorização', servico_indisponivel: 'Verificação indisponível', erro_leitura: 'Falha na verificação', resposta_invalida: 'Resposta inesperada' };
+  const success = ['conectada', 'renovada'].includes(session.estado), warning = !success && !['encontrada', 'nao_verificada'].includes(session.estado);
+  $('sessionCard').className = `session-card ${success ? 'success' : warning ? 'warning' : ''}`;
+  $('sessionBadge').textContent = labels[session.estado] || 'Verificação necessária';
+  $('sessionMessage').textContent = session.mensagem;
+  $('sessionHelp').hidden = !warning;
+  $('sessionHelp').textContent = ['ausente', 'login_necessario'].includes(session.estado)
+    ? 'Recarregar a página nem sempre cria uma sessão nova. Volte ao SIAPS e use o acesso oficial. Depois clique em “Verificar conexão” e repita a consulta.'
+    : session.estado === 'sem_permissao' ? 'Confira se o seu perfil permite consultar esses indicadores para Betim. A ferramenta não altera permissões.'
+    : 'Tente “Verificar conexão”. Se o SIAPS funciona normalmente e este aviso continua, copie o diagnóstico nos detalhes técnicos.';
+}
 function configuracao() {
   return { competencias: [...state.competencias], indicadores: state.controllers.indicadores.getValues(), unidades: state.controllers.unidades.getValues(), equipes: state.controllers.equipes.getValues(), modoDados: $('modoDados').value, incluirMetadados: $('metadados').checked, aceitarParcial: $('aceitarParcial').checked, unificacao: { modo: $('modoUnificacao').value, agruparPor: $('agruparUnificacao').value }, ordenacao: { campo: $('ordenarCampo').value, direcao: $('ordenarDirecao').value } };
 }
@@ -128,7 +141,9 @@ function renderResultado() {
   if (!compativel) { state.previa = null; $('baixar').disabled = true; }
   const failures = execution.pendencias?.length ? execution.pendencias : (resumo?.falhas || []);
   $('failuresSection').hidden = !failures.length;
-  $('failures').replaceChildren(...failures.map(f => element('li', `${f.codigo} · ${C.formatarCompetencia(f.competencia)} — ${f.erro}`)));
+  const groups = new Map();
+  for (const f of failures) { if (!groups.has(f.erro)) groups.set(f.erro, []); groups.get(f.erro).push(`${f.codigo} (${C.formatarCompetencia(f.competencia)})`); }
+  $('failures').replaceChildren(...[...groups].map(([erro, items]) => element('li', `${erro} — ${items.length} consulta(s): ${items.slice(0, 6).join(', ')}${items.length > 6 ? ` e mais ${items.length - 6}.` : '.'}`)));
   $('tentarNovamente').disabled = Boolean(execution.emExecucao);
   if (!compativel) return;
   const time = new Date(resumo.consultadoEm).toLocaleString('pt-BR');
@@ -153,6 +168,9 @@ function aplicarEstadoExecucao(execution) {
   const wasBusy = Boolean(state.execucao?.emExecucao);
   state.execucao = execution;
   const busy = Boolean(execution.emExecucao);
+  renderSessao(execution.sessao || { estado: 'nao_verificada', mensagem: busy ? 'A sessão será verificada durante esta operação.' : 'Use “Verificar conexão” para confirmar o acesso nesta aba.' });
+  $('verificarSessao').disabled = busy || !state.pronta;
+  $('irSiaps').disabled = !state.pronta;
   $('configFields').disabled = busy; $('exportFields').disabled = busy;
   $('consolidar').disabled = busy || !state.pronta; $('parar').hidden = !busy;
   $('baixar').textContent = busy && execution.operacao === 'exportar' ? 'Preparando e baixando…' : 'Baixar Excel';
@@ -186,7 +204,7 @@ async function iniciar() {
     if (id) document.body.classList.add('dashboard');
     const tab = id ? await chrome.tabs.get(id) : (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
     if (!tab?.id || new URL(tab.url || '').origin !== 'https://siaps.saude.gov.br') throw new Error('Abra a aba do SIAPS, entre no sistema e clique novamente no ícone da ferramenta.');
-    state.tabId = tab.id; $('pageContext').textContent = 'Conectado à aba do SIAPS · Betim/MG';
+    state.tabId = tab.id; $('pageContext').textContent = 'Vinculado à aba do SIAPS · Betim/MG';
     const [catalog, session, local, result] = await Promise.all([api({ type: 'getCatalog' }), chrome.storage.session.get(`siaps:config:${tab.id}`), chrome.storage.local.get(['siaps:preferences', 'siapsToolPopupConfig']), api({ type: 'getExecution' })]);
     const config = session[`siaps:config:${tab.id}`] || local['siaps:preferences'] || local.siapsToolPopupConfig || {};
     state.configInicial = config; state.catalogo = catalog.catalogo;
@@ -209,6 +227,7 @@ async function iniciar() {
     if (config.ordenacao?.campo && [...$('ordenarCampo').options].some(o => o.value === config.ordenacao.campo)) $('ordenarCampo').value = config.ordenacao.campo;
     // Recupera eventos que tenham chegado durante a construção dos controles.
     aplicarEstadoExecucao((await api({ type: 'getExecution' })).estado);
+    if (!state.execucao?.emExecucao) renderSessao(await api({ type: 'checkSession' }));
   } catch (error) { status(error.message, 'error'); $('pageContext').textContent = 'É necessário abrir o SIAPS para consultar dados.'; }
 }
 $('adicionarCompetencia').addEventListener('click', () => {
@@ -218,6 +237,13 @@ $('adicionarCompetencia').addEventListener('click', () => {
   meses(); mudouConsulta();
 });
 $('consolidar').addEventListener('click', () => consultar());
+$('verificarSessao').addEventListener('click', async () => {
+  $('verificarSessao').disabled = true; $('sessionBadge').textContent = 'Verificando conexão…';
+  try { renderSessao(await api({ type: 'checkSession', verificar: true })); }
+  catch { renderSessao({ estado: 'erro_leitura', mensagem: 'A extensão não conseguiu verificar a conexão. Volte à aba do SIAPS e reabra a ferramenta.' }); }
+  finally { $('verificarSessao').disabled = Boolean(state.execucao?.emExecucao); }
+});
+$('irSiaps').addEventListener('click', async () => { try { await api({ type: 'focusSiaps' }); } catch (e) { status(e.message, 'error'); } });
 $('atualizar').addEventListener('click', () => consultar(true));
 $('tentarNovamente').addEventListener('click', () => consultar());
 $('parar').addEventListener('click', async () => { try { await api({ type: 'cancel' }); } catch (e) { status(e.message, 'error'); } });

@@ -14,13 +14,13 @@ function setup() {
     scripting: { executeScript: async script => {
       const tabId = script.target.tabId;
       if (script.files) { live[tabId] = { ocupado: true, disponivel: false }; return [{ documentId: `doc-${tabId}` }]; }
-      if (script.world === 'MAIN') return [{ result: 'synthetic-token' }];
+      if (script.world === 'MAIN') return [{ result: { estado: 'encontrada', mensagem: 'Sessão encontrada.', token: 'synthetic-token' } }];
       if (script.func.toString().includes('ocupado:')) return [{ result: live[tabId] || { ocupado: false, disponivel: false }, documentId: `doc-${tabId}` }];
       return [{ documentId: `doc-${tabId}` }];
     } },
     downloads: { download: async () => 5, search: async () => [{ state: 'complete' }], cancel: async () => {} }
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../background.js'), 'utf8'), { chrome, importScripts() {}, SiapsCore: require('../core.js'), SiapsCatalog: require('../catalog.js'), crypto: require('node:crypto').webcrypto, URL, console });
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../background.js'), 'utf8'), { chrome, importScripts() {}, lerSessaoSiaps: require('../session.js').lerSessaoSiaps, SiapsCore: require('../core.js'), SiapsCatalog: require('../catalog.js'), crypto: require('node:crypto').webcrypto, URL, console });
   const ui = { id: 'test-extension', url: 'chrome-extension://test-extension/popup.html?tabId=1', tab: { id: 9 } };
   const engine = tabId => ({ id: 'test-extension', tab: { id: tabId }, url: urls[tabId], frameId: 0, documentId: `doc-${tabId}` });
   const message = (m, sender = ui) => new Promise(resolve => listener(m, sender, resolve));
@@ -66,4 +66,9 @@ test('storage não recebe token; download de URL externa é rejeitado', async ()
   assert.equal(JSON.stringify(e.data).includes('synthetic-token'), false);
   const dl = await e.message({ type: 'download', jobId: out.estado.jobId, url: 'https://exemplo.com/a.xlsx', filename: 'SIAPS_A.xlsx' }, e.engine(1));
   assert.match(dl.erro, /inválido/);
+});
+test('diagnóstico de sessão para interface nunca devolve o token', async () => {
+  const e = setup(); const result = await e.message({ type: 'checkSession', tabId: 1, verificar: true });
+  assert.equal(result.estado, 'encontrada'); assert.equal(result.token, undefined);
+  assert.equal(JSON.stringify(e.data).includes('synthetic-token'), false);
 });

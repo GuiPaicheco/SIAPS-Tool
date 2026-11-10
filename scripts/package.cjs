@@ -12,7 +12,7 @@ function add(file) {
   if (fs.statSync(full).isDirectory()) for (const child of fs.readdirSync(full)) add(`${file}/${child}`);
   else files[file] = new Uint8Array(fs.readFileSync(full));
 }
-for (const file of ['manifest.json', 'background.js', 'catalog.js', 'core.js', 'main.js', 'excel.js', 'popup.js', 'popup.html', 'popup.css', 'vendor', 'assets', 'README.md', 'CHANGELOG.md', 'VALIDACAO.md', 'PENDENCIAS.md']) add(file);
+for (const file of ['manifest.json', 'background.js', 'catalog.js', 'core.js', 'session.js', 'main.js', 'excel.js', 'popup.js', 'popup.html', 'popup.css', 'vendor', 'assets', 'README.md', 'CHANGELOG.md', 'VALIDACAO.md', 'PENDENCIAS.md']) add(file);
 const bytes = zipSync(files, { level: 6, mtime: new Date(2000, 0, 1) });
 const extracted = unzipSync(bytes);
 for (const [name, buffer] of Object.entries(files)) if (!Buffer.from(buffer).equals(Buffer.from(extracted[name] || []))) throw new Error(`Pacote divergente: ${name}`);
